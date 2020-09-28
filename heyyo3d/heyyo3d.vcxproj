@@ -139,7 +139,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChiliWin.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="heyyo3d.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="hy3d.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

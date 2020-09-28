@@ -6,22 +6,36 @@ int CALLBACK WinMain(
 	LPSTR     lpCmdLine,
 	int       nShowCmd)
 {
-	Window a(700, 500, "HEYYO3D");
-
-	// Message loop
-	MSG message;
-	BOOL gResult = GetMessage(&message, nullptr, 0, 0);
-	while (gResult > 0)
+	try
 	{
-		TranslateMessage(&message);
-		DispatchMessage(&message);
-		gResult = GetMessage(&message, nullptr, 0, 0);
-	}
+		Window a(700, 500, "HEYYO3D");
 
-	if (gResult == -1)
-	{
-		return -1;
+		// Message loop
+		MSG message;
+		BOOL gResult = GetMessage(&message, nullptr, 0, 0);
+		while (gResult > 0)
+		{
+			TranslateMessage(&message);
+			DispatchMessage(&message);
+			gResult = GetMessage(&message, nullptr, 0, 0);
+		}
+
+		if (gResult == -1)
+		{
+			return -1;
+		}
 	}
-	
-	return message.wParam;
+	catch (const HY3D_Exception& e)
+	{
+		MessageBox(nullptr, e.what(), e.GetType(), MB_OK | MB_ICONEXCLAMATION);
+	}
+	catch (const std::exception& e)
+	{
+		MessageBox(nullptr, e.what(), "Standard Exception", MB_OK | MB_ICONEXCLAMATION);
+	}
+	catch (...)
+	{
+		MessageBox(nullptr, "No details available", "Unknown Exception", MB_OK | MB_ICONEXCLAMATION);
+	}
+	return -1;
 }

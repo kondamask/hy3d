@@ -1,8 +1,24 @@
 #pragma once
-#include "ChiliWin.h"
+#include "HY3D_Windows.h"
+#include "HY3D_Exception.h"
 
 class Window
 {
+public:
+	class Exception : public HY3D_Exception
+	{
+	public:
+		Exception(int line, const char* file, HRESULT hr) noexcept;
+		const char* what() const noexcept override;
+		virtual const char* GetType() const noexcept override;
+		static std::string TranslateErrorCode(HRESULT hr) noexcept;
+		HRESULT GetErrorCode() const noexcept;
+		std::string GetErrorString() const noexcept;
+
+	private:
+		HRESULT hr;
+	};
+
 private:
 	// This is a singleton class meaning:
 	// The class contains a member variable of the same
@@ -27,7 +43,7 @@ private:
 	};
 
 public:
-	Window(int width, int height, LPCSTR title) noexcept;
+	Window(int width, int height, LPCSTR title);
 	~Window();
 	
 private:
@@ -42,3 +58,8 @@ private:
 	Window(const Window&) = delete;
 	Window& operator = (const Window&) = delete;
 };
+
+
+// error exception helper macro
+#define HY3D_WND_EXCEPT( hr ) Window::Exception( __LINE__,__FILE__,hr )
+#define HY3D_WND_LAST_EXCEPT() Window::Exception( __LINE__,__FILE__,GetLastError() )

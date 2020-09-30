@@ -2,6 +2,7 @@
 #include "hy3d_windows_defines.h"
 #include "HY3D_Exception.h"
 #include "Keyboard.h"
+#include "Mouse.h"
 
 class Window
 {
@@ -11,6 +12,7 @@ public:
 	~Window();
 
 	Keyboard kbd;
+	Mouse mouse;
 
 private:
 	LPCSTR windowClassName = "HEYYO3D_Window_Class";
@@ -22,6 +24,8 @@ private:
 	static LRESULT CALLBACK HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
 	static LRESULT CALLBACK HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
 	LRESULT CALLBACK HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
+
+	void SetWindowTitle(std::string s);
 
 	// Delete the copy constuctor and assignment operation
 	// for extra safety.

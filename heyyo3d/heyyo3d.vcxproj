@@ -136,6 +136,7 @@
   <ItemGroup>
     <ClCompile Include="HY3D_Exception.cpp" />
     <ClCompile Include="Keyboard.cpp" />
+    <ClCompile Include="Mouse.cpp" />
     <ClCompile Include="win32_window.cpp" />
     <ClCompile Include="win32_main.cpp" />
   </ItemGroup>
@@ -143,6 +144,7 @@
     <ClInclude Include="hy3d_windows_defines.h" />
     <ClInclude Include="HY3D_Exception.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Mouse.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="win32_window.h" />
   </ItemGroup>

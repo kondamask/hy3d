@@ -9,6 +9,8 @@ Window::Window()
 }
 
 Window::Window(int width, int height, LPCSTR windowTitle)
+	:
+	width(width), height(height)
 {
 	instance = GetModuleHandle(nullptr);
 
@@ -110,8 +112,7 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 		kbd.ClearState();
 	} break;
 
-	/*///////////////////////////////////////////////////
-					KEYBOARD HANDLING				   */
+	/***************** KEYBOARD EVENTS ****************/
 	case WM_SYSKEYDOWN:
 	case WM_KEYDOWN:
 	{
@@ -120,20 +121,90 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 		{
 			kbd.OnPress((VK_CODE)wParam);
 		}
-	} break;
-
+		break;
+	}
 	case WM_SYSKEYUP:
 	case WM_KEYUP:
 	{
 		kbd.OnRelease((VK_CODE)wParam);
-	} break;
+		break;
+	}
 
 	case WM_CHAR:
 	{
 		kbd.OnChar((unsigned char)wParam);
+		break;
 	}
+	/**************************************************/
 	
-	/////////////////////////////////////////////////////
+	/****************** MOUSE EVENTS ******************/
+	case WM_MOUSEMOVE:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+
+		bool isInWindow = p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
+		if (isInWindow)
+		{
+			mouse.OnMove(p.x, p.y);
+			if(!mouse.IsInWindow())
+			{
+				SetCapture(handle);
+				mouse.OnEnter();
+			}
+		}
+		else
+		{
+			if (mouse.LeftIsPressed() || mouse.RightIsPressed())
+			{
+				mouse.OnMove(p.x, p.y);
+			}
+			else
+			{
+				ReleaseCapture();
+				mouse.OnLeave();
+			}
+		}
+
+		
+		break;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnLeftPress(p.x, p.y);
+		break;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnRightPress(p.x, p.y);
+		break;
+	}
+	case WM_LBUTTONUP:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnLeftRelease(p.x, p.y);
+		break;
+	}
+	case WM_RBUTTONUP:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnRightRelease(p.x, p.y);
+		break;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnWheelDelta(p.x, p.y, GET_WHEEL_DELTA_WPARAM(wParam));
+		break;
+	}
+	case WM_MOUSELEAVE:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		mouse.OnMove(p.x, p.y);
+		break;
+	}
+	/**************************************************/
 
 	case WM_DESTROY:
 	{
@@ -146,6 +217,12 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	}
 	}
 	return result;
+}
+
+void Window::SetWindowTitle(std::string s)
+{
+	LPCSTR result = s.c_str();
+	SetWindowText(handle, result);
 }
 
 Window::Exception::Exception(int line, const char * file, HRESULT hr) noexcept

@@ -1,4 +1,5 @@
 #include "Keyboard.h"
+#include "Mouse.h"
 
 Keyboard::Event::Event()
 	: Event(Type::Invalid, 0u)
@@ -12,17 +13,17 @@ Keyboard::Event::Event(Type type, VK_CODE code)
 
 bool Keyboard::Event::IsPress() const
 {
-	return type == Press;
+	return type == Keyboard::Event::Type::Press;
 }
 
 bool Keyboard::Event::IsRelease() const
 {
-	return type == Release;
+	return type == Keyboard::Event::Type::Release;
 }
 
 bool Keyboard::Event::IsValid() const
 {
-	return !(type == Invalid);
+	return !(type == Keyboard::Event::Type::Invalid);
 }
 
 VK_CODE Keyboard::Event::GetCode() const
@@ -40,9 +41,11 @@ bool Keyboard::KeyIsEmpty() const
 	return !e.IsValid();
 }
 
-Keyboard::Event Keyboard::ReadKey() const
+Keyboard::Event Keyboard::ReadKey()
 {
-	return e;
+	auto temp = e;
+	ClearEvent();
+	return temp;
 }
 
 bool Keyboard::CharIsEmpty() const
@@ -50,9 +53,11 @@ bool Keyboard::CharIsEmpty() const
 	return (c == '\0');
 }
 
-char Keyboard::ReadChar() const
+char Keyboard::ReadChar()
 {
-	return c;
+	char temp = c;
+	ClearChar();
+	return temp;
 }
 
 void Keyboard::ClearEvent()
@@ -107,9 +112,3 @@ void Keyboard::ClearState()
 {
 	keyStates.reset();
 }
-
-/*
-template<typename T>
-void Keyboard::TrimQueue(std::queue<T> q)
-{
-}*/

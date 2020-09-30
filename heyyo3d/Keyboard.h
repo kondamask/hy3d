@@ -1,5 +1,4 @@
 #pragma once
-#include <queue>
 #include <bitset>
 
 using VK_CODE = unsigned char;
@@ -37,10 +36,10 @@ public:
 
 	bool KeyIsPressed(VK_CODE code) const;
 	bool KeyIsEmpty() const;
-	Keyboard::Event ReadKey() const;
+	Keyboard::Event ReadKey();
 
 	bool CharIsEmpty() const;
-	char ReadChar() const;
+	char ReadChar();
 
 	void ClearEvent();
 	void ClearChar();
@@ -56,15 +55,8 @@ private:
 	void OnChar(char c);
 	void ClearState();
 
-	//etemplate<typename T>
-	//void TrimQueue(std::queue<T> q);
-
 	std::bitset<256> keyStates;
 	Keyboard::Event e;
 	char c;
-
-	/*std::queue<Event> keyEvents;
-	std::queue<char> charBuffer;*/
-
 	bool autoRepeatEnabled = false;
 };

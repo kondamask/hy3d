@@ -15,7 +15,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// Set window class properties
 	WNDCLASS windowClass = { 0 };
 	windowClass.style = CS_OWNDC;
-	windowClass.lpfnWndProc = HandleMessage;
+	windowClass.lpfnWndProc = HandleWindowCreation;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
 	windowClass.hbrBackground = CreateSolidBrush(RGB(255, 255, 0));
@@ -67,10 +67,35 @@ Window::~Window()
 	DestroyWindow(handle);
 }
 
-LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+LRESULT Window::HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+{
+	if(message == WM_CREATE)
+	{
+		// extract pointer to window class from creation data
+		CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
+		if (pCreate)
+		{
+			Window* pWindow = (Window*)(pCreate->lpCreateParams);
+			// Set WinAPI-managed user data to store ptr to window class
+			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
+			// Set message proc to normal handler
+			SetWindowLongPtr(handle, GWLP_WNDPROC, (LONG_PTR)(&Window::HandleMessageThunk));
+			// forward message to window class handler
+			return pWindow->HandleMessage(handle, message, wParam, lParam);
+		}
+	}
+	return DefWindowProc(handle, message, wParam, lParam);;
+}
+
+LRESULT Window::HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+{
+	Window* pWindow = (Window*)GetWindowLongPtr(handle, GWLP_USERDATA);
+	return pWindow->HandleMessage(handle, message, wParam, lParam);
+}
+
+LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = 0;
-
 	switch (message)
 	{
 	case WM_CLOSE:
@@ -80,18 +105,35 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 		break;
 	}
 
-	case WM_CREATE:
+	case WM_KILLFOCUS:
 	{
-		// extract pointer to window class from creation data
-		CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
-		if (pCreate)
+		kbd.ClearState();
+	} break;
+
+	/*///////////////////////////////////////////////////
+					KEYBOARD HANDLING				   */
+	case WM_SYSKEYDOWN:
+	case WM_KEYDOWN:
+	{
+		bool wasDown = ((lParam >> 30) & 1) != 0;
+		if (!wasDown || kbd.AutoRepeatEnabled())
 		{
-			Window* pWindow = (Window*)(pCreate->lpCreateParams);
-			// Set WinAPI-managed user data to store ptr to window class
-			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
+			kbd.OnPress((VK_CODE)wParam);
 		}
-		break;
+	} break;
+
+	case WM_SYSKEYUP:
+	case WM_KEYUP:
+	{
+		kbd.OnRelease((VK_CODE)wParam);
+	} break;
+
+	case WM_CHAR:
+	{
+		kbd.OnChar((unsigned char)wParam);
 	}
+	
+	/////////////////////////////////////////////////////
 
 	case WM_DESTROY:
 	{

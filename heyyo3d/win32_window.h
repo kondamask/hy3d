@@ -1,6 +1,7 @@
 #pragma once
 #include "hy3d_windows_defines.h"
 #include "HY3D_Exception.h"
+#include "Keyboard.h"
 
 class Window
 {
@@ -9,6 +10,8 @@ public:
 	Window(int width, int height, LPCSTR windowTitle);
 	~Window();
 
+	Keyboard kbd;
+
 private:
 	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 	HINSTANCE instance;
@@ -16,8 +19,9 @@ private:
 	int width;
 	int height;
 	
-private:
-	static LRESULT CALLBACK HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
+	static LRESULT CALLBACK HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
+	static LRESULT CALLBACK HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
+	LRESULT CALLBACK HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
 
 	// Delete the copy constuctor and assignment operation
 	// for extra safety.

@@ -1,4 +1,21 @@
 #include "win32_window.h"
+#include "Timer.h"
+
+static bool ProcessMessages(int& quitMessage)
+{
+	MSG message;
+	while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
+	{
+		quitMessage = (int)message.wParam;
+		if (message.message == WM_QUIT)
+		{
+			return false;
+		} 
+		TranslateMessage(&message);
+		DispatchMessage(&message);
+	}
+	return true;
+}
 
 int CALLBACK WinMain(
 	HINSTANCE instance,
@@ -7,21 +24,17 @@ int CALLBACK WinMain(
 	int       nShowCmd)
 {
 	Window window;
+	Timer timer;
 
 	// Message loop
-	MSG message;
-	BOOL gResult = GetMessage(&message, nullptr, 0, 0);
-	while (gResult > 0)
+	int quitMessage = -1;
+	while (ProcessMessages(quitMessage))
 	{
-		TranslateMessage(&message);
-		DispatchMessage(&message);
-		gResult = GetMessage(&message, nullptr, 0, 0);
+		float t = timer.Peek();
+		char title[50];
+		sprintf(title, "Time Elapsed: %.2f", t);
+		window.SetTitle(title);
 	}
 
-	if (gResult == -1)
-	{
-		return -1;
-	}
-
-	return 0;
+	return quitMessage;
 }

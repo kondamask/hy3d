@@ -14,6 +14,12 @@ public:
 	Keyboard kbd;
 	Mouse mouse;
 
+	//testing stuff
+	void SetTitle(LPCSTR t)
+	{
+		SetWindowText(handle, t);
+	}
+
 private:
 	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 	HINSTANCE instance;

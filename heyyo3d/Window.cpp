@@ -1,4 +1,4 @@
-#include "win32_window.h"
+#include "Window.h"
 #include "resource.h"
 #include <sstream>
 
@@ -15,7 +15,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	instance = GetModuleHandle(nullptr);
 
 	// Set window class properties
-	WNDCLASS windowClass = { 0 };
+	WNDCLASSA windowClass = {};
 	windowClass.style = CS_OWNDC;
 	windowClass.lpfnWndProc = HandleWindowCreation;
 	windowClass.lpszClassName = windowClassName;
@@ -23,7 +23,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	windowClass.hbrBackground = CreateSolidBrush(RGB(255, 255, 0));
 	windowClass.hIcon = static_cast<HICON>(LoadImage(instance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
 	
-	if (!RegisterClass(&windowClass))
+	if (!RegisterClassA(&windowClass))
 	{
 		return;
 	}
@@ -43,7 +43,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	height = rect.bottom - rect.top;
 
 	// Create the window
-	handle = CreateWindow(
+	handle = CreateWindowA(
 		windowClassName, 
 		windowTitle,
 		WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,
@@ -65,7 +65,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 
 Window::~Window()
 {
-	UnregisterClass(windowClassName, instance);
+	UnregisterClassA(windowClassName, instance);
 	DestroyWindow(handle);
 }
 
@@ -222,7 +222,7 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 void Window::SetWindowTitle(std::string s)
 {
 	LPCSTR result = s.c_str();
-	SetWindowText(handle, result);
+	SetWindowTextA(handle, result);
 }
 
 Window::Exception::Exception(int line, const char * file, HRESULT hr) noexcept
@@ -254,10 +254,10 @@ const char * Window::Exception::GetType() const noexcept
 std::string Window::Exception::TranslateErrorCode(HRESULT hr) noexcept
 {
 	char *pBuffer = nullptr;
-	if (FormatMessage(
+	if (FormatMessageA(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPSTR>(&pBuffer),
+		(LPSTR)(&pBuffer),
 		0, nullptr))
 	{
 		std::string error = pBuffer;

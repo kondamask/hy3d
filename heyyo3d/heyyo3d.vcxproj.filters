@@ -15,15 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="HY3D_Exception.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win32_window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win32_main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Keyboard.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -33,18 +24,18 @@
     <ClCompile Include="Timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Exception.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HY3D_Exception.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="win32_window.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hy3d_windows_defines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Keyboard.h">
@@ -54,6 +45,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Exception.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsDefines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

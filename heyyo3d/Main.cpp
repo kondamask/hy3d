@@ -1,4 +1,4 @@
-#include "win32_window.h"
+#include "Window.h"
 #include "Timer.h"
 
 static bool ProcessMessages(int& quitMessage)
@@ -17,11 +17,7 @@ static bool ProcessMessages(int& quitMessage)
 	return true;
 }
 
-int CALLBACK WinMain(
-	HINSTANCE instance,
-	HINSTANCE prevInstance,
-	LPSTR     lpCmdLine,
-	int       nShowCmd)
+int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	Window window;
 	Timer timer;
@@ -30,10 +26,7 @@ int CALLBACK WinMain(
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
-		float t = timer.Peek();
-		char title[50];
-		sprintf(title, "Time Elapsed: %.2f", t);
-		window.SetTitle(title);
+		// Do stuff
 	}
 
 	return quitMessage;

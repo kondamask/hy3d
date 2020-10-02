@@ -73,10 +73,16 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -85,7 +91,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -93,6 +99,9 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -106,7 +115,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,10 +138,11 @@
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,21 +151,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="HY3D_Exception.cpp" />
+    <ClCompile Include="Exception.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Mouse.cpp" />
     <ClCompile Include="Timer.cpp" />
-    <ClCompile Include="win32_window.cpp" />
-    <ClCompile Include="win32_main.cpp" />
+    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hy3d_windows_defines.h" />
-    <ClInclude Include="HY3D_Exception.h" />
+    <ClInclude Include="WindowsDefines.h" />
+    <ClInclude Include="Exception.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Mouse.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Timer.h" />
-    <ClInclude Include="win32_window.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="heyyo3d.rc" />

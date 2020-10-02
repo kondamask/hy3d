@@ -1,6 +1,6 @@
 #pragma once
-#include "hy3d_windows_defines.h"
-#include "HY3D_Exception.h"
+#include "WindowsDefines.h"
+#include "Exception.h"
 #include "Keyboard.h"
 #include "Mouse.h"
 
@@ -17,7 +17,7 @@ public:
 	//testing stuff
 	void SetTitle(LPCSTR t)
 	{
-		SetWindowText(handle, t);
+		SetWindowTextA(handle, t);
 	}
 
 private:

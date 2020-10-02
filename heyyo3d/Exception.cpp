@@ -1,4 +1,4 @@
-#include "HY3D_Exception.h"
+#include "Exception.h"
 #include <sstream>
 
 HY3D_Exception::HY3D_Exception(int line, const char * file) noexcept

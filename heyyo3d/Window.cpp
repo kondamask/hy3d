@@ -14,13 +14,15 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 {
 	instance = GetModuleHandle(nullptr);
 
-	// Set window class properties
+	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 	WNDCLASSA windowClass = {};
+
+	// Set window class properties
 	windowClass.style = CS_OWNDC;
 	windowClass.lpfnWndProc = HandleWindowCreation;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
-	windowClass.hbrBackground = CreateSolidBrush(RGB(255, 255, 0));
+	windowClass.hbrBackground = 0;
 	windowClass.hIcon = static_cast<HICON>(LoadImage(instance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
 	
 	if (!RegisterClassA(&windowClass))
@@ -43,7 +45,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	height = rect.bottom - rect.top;
 
 	// Create the window
-	handle = CreateWindowA(
+	window = CreateWindowA(
 		windowClassName, 
 		windowTitle,
 		WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,
@@ -60,13 +62,20 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
 
-	ShowWindow(handle, SW_SHOW);
+	ShowWindow(window, SW_SHOW);
+	gfx = new dx11_graphics(window);
 }
 
-Window::~Window()
+// Window::~Window()
+// {
+// 	delete gfx;
+// 	UnregisterClassA(windowClassName, instance);
+// 	DestroyWindow(window);
+// }
+
+dx11_graphics& Window::Gfx() const
 {
-	UnregisterClassA(windowClassName, instance);
-	DestroyWindow(handle);
+	return *gfx;
 }
 
 LRESULT Window::HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept
@@ -164,8 +173,6 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 				mouse.OnLeave();
 			}
 		}
-
-		
 		break;
 	}
 	case WM_LBUTTONDOWN:
@@ -217,12 +224,6 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	}
 	}
 	return result;
-}
-
-void Window::SetWindowTitle(std::string s)
-{
-	LPCSTR result = s.c_str();
-	SetWindowTextA(handle, result);
 }
 
 Window::Exception::Exception(int line, const char * file, HRESULT hr) noexcept

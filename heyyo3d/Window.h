@@ -3,40 +3,33 @@
 #include "Exception.h"
 #include "Keyboard.h"
 #include "Mouse.h"
+#include "Graphics.h"
 
 class Window
 {
 public:
 	Window();
 	Window(int width, int height, LPCSTR windowTitle);
-	~Window();
+	// Not necessary to have a destructor. Everything gets destroyed
+	// if the window closes.
+	// ~Window();
+	// Window(const Window&) = delete;
+	// Window& operator = (const Window&) = delete;
 
+	dx11_graphics& Gfx() const;
 	Keyboard kbd;
 	Mouse mouse;
 
-	//testing stuff
-	void SetTitle(LPCSTR t)
-	{
-		SetWindowTextA(handle, t);
-	}
-
 private:
-	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 	HINSTANCE instance;
-	HWND handle;
+	HWND window;
 	int width;
 	int height;
+	dx11_graphics *gfx;
 	
 	static LRESULT CALLBACK HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
 	static LRESULT CALLBACK HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
 	LRESULT CALLBACK HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
-
-	void SetWindowTitle(std::string s);
-
-	// Delete the copy constuctor and assignment operation
-	// for extra safety.
-	Window(const Window&) = delete;
-	Window& operator = (const Window&) = delete;
 
 public:
 	class Exception : public HY3D_Exception

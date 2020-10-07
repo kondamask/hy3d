@@ -26,13 +26,13 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR lpCmdLine
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
-		// test
+		// test code
 		float r = sin(timer.Peek()) / 2.0f + 0.5f;
 		float g = sin(timer.Peek()) / 4.0f + 0.5f;
 		float b = sin(timer.Peek()) / 6.0f + 0.5f;
 
 		window.Gfx().RenderBackground(r,g,b);
-		// end test
+		// end test code
 
 		window.Gfx().EndFrame();
 	}

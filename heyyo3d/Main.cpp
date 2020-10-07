@@ -26,7 +26,12 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR lpCmdLine
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
-		// Do stuff
+		float r = sin(timer.Peek()) / 2.0f + 0.5f;
+		float g = sin(timer.Peek()) / 4.0f + 0.5f;
+		float b = sin(timer.Peek()) / 6.0f + 0.5f;
+
+		window.gfx->RenderBackground(r,g,b);
+		window.gfx->EndFrame();
 	}
 
 	return quitMessage;

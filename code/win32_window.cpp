@@ -67,7 +67,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	gfx = new dx11_graphics(window);
 }
 
-LRESULT Window::HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT Window::HandleWindowCreation(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if(message == WM_CREATE)
 	{
@@ -77,23 +77,23 @@ LRESULT Window::HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, L
 		{
 			Window* pWindow = (Window*)(pCreate->lpCreateParams);
 			// Set WinAPI-managed user data to store ptr to window class
-			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
+			SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR)(pWindow));
 			// Set message proc to normal handler
-			SetWindowLongPtr(handle, GWLP_WNDPROC, (LONG_PTR)(&Window::HandleMessageThunk));
+			SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)(&Window::HandleMessageThunk));
 			// forward message to window class handler
-			return pWindow->HandleMessage(handle, message, wParam, lParam);
+			return pWindow->HandleMessage(window, message, wParam, lParam);
 		}
 	}
-	return DefWindowProc(handle, message, wParam, lParam);;
+	return DefWindowProc(window, message, wParam, lParam);;
 }
 
-LRESULT Window::HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT Window::HandleMessageThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	Window* pWindow = (Window*)GetWindowLongPtr(handle, GWLP_USERDATA);
-	return pWindow->HandleMessage(handle, message, wParam, lParam);
+	Window* pWindow = (Window*)GetWindowLongPtr(window, GWLP_USERDATA);
+	return pWindow->HandleMessage(window, message, wParam, lParam);
 }
 
-LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = 0;
 	switch (message)
@@ -146,7 +146,7 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 			mouse.SetPos(p.x, p.y);
 			if(!mouse.isInWindow) // if it wasn't in the window before
 			{
-				SetCapture(handle);
+				SetCapture(window);
 				mouse.isInWindow = true;
 			}
 		}
@@ -215,7 +215,7 @@ LRESULT Window::HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM l
 
 	default:
 	{
-		result = DefWindowProc(handle, message, wParam, lParam);
+		result = DefWindowProc(window, message, wParam, lParam);
 	}
 	}
 	return result;

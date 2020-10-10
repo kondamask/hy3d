@@ -1,6 +1,5 @@
 #include "Timer.h"
 
-
 Timer::Timer()
 	: last(std::chrono::steady_clock::now())
 {

@@ -1,9 +1,7 @@
 #include "win32_window.h"
-#include <sstream>
 
 Window::Window(int width, int height, LPCSTR windowTitle)
-	:
-	width(width), height(height)
+	:width(width), height(height)
 {
 	instance = GetModuleHandle(nullptr);
 	
@@ -11,7 +9,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 
 	// Set window class properties
 	windowClass.style = CS_OWNDC;
-	windowClass.lpfnWndProc = HandleWindowCreation;
+	windowClass.lpfnWndProc = CreateWindowProc;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
 	windowClass.hbrBackground = 0;
@@ -56,14 +54,14 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
 	
-	gfx = new dx11_graphics(window);
+	graphics = new dx11_graphics(window);
 
 	ShowWindow(window, SW_SHOWDEFAULT);
 }
 
 Window::~Window()
 {
-	delete gfx;
+	delete graphics;
 	UnregisterClassA(windowClassName, instance);
 	DestroyWindow(window);
 }
@@ -84,7 +82,7 @@ bool Window::ProcessMessages(int& quitMessage)
 	return true;
 }
 
-LRESULT Window::HandleWindowCreation(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT Window::CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if(message == WM_CREATE)
 	{
@@ -96,7 +94,7 @@ LRESULT Window::HandleWindowCreation(HWND window, UINT message, WPARAM wParam, L
 			// Set WinAPI-managed user data to store ptr to window class
 			SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR)(pWindow));
 			// Set message proc to normal handler
-			SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)(&Window::HandleMessageThunk));
+			SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)(&Window::ForwardMessageToClassHandler));
 			// forward message to window class handler
 			return pWindow->HandleMessage(window, message, wParam, lParam);
 		}
@@ -104,7 +102,7 @@ LRESULT Window::HandleWindowCreation(HWND window, UINT message, WPARAM wParam, L
 	return DefWindowProc(window, message, wParam, lParam);;
 }
 
-LRESULT Window::HandleMessageThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT Window::ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	Window* pWindow = (Window*)GetWindowLongPtr(window, GWLP_USERDATA);
 	return pWindow->HandleMessage(window, message, wParam, lParam);
@@ -124,7 +122,7 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 
 	case WM_KILLFOCUS:
 	{
-		kbd.Clear();
+		keyboard.Clear();
 		break;
 	}
 
@@ -133,22 +131,22 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 	case WM_KEYDOWN:
 	{
 		bool wasDown = ((lParam >> 30) & 1) != 0;
-		if (!wasDown || kbd.autoRepeatEnabled)
+		if (!wasDown || keyboard.autoRepeatEnabled)
 		{
-			kbd.Press((VK_CODE)wParam);
+			keyboard.Press((VK_CODE)wParam);
 		}
 		break;
 	}
 	case WM_SYSKEYUP:
 	case WM_KEYUP:
 	{
-		kbd.Release((VK_CODE)wParam);
+		keyboard.Release((VK_CODE)wParam);
 		break;
 	}
 
 	case WM_CHAR:
 	{
-		kbd.SetChar((unsigned char)wParam);
+		keyboard.SetChar((unsigned char)wParam);
 		break;
 	}
 	/**************************************************/

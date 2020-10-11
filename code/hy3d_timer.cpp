@@ -1,4 +1,4 @@
-#include "Timer.h"
+#include "hy3d_timer.h"
 
 Timer::Timer()
 	: last(std::chrono::steady_clock::now())

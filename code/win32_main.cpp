@@ -1,4 +1,4 @@
-#include "app.h"
+#include "hy3d_app.h"
 
 int CALLBACK WinMain(
 	HINSTANCE instance, 

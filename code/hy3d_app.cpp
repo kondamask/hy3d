@@ -1,4 +1,4 @@
-#include "App.h"
+#include "hy3d_app.h"
 
 App::App()
     : window(720, 480, "HY3D DEV")
@@ -17,6 +17,6 @@ int App::Go()
 
 void App::DoFrame()
 {
-    window.gfx->RenderBackground(1.0f,0.1f,0.9f);
-    window.gfx->EndFrame();
+    window.graphics->RenderBackground(1.0f,0.1f,0.9f);
+    window.graphics->EndFrame();
 }

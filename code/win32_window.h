@@ -58,17 +58,20 @@ class Window
 public:
 	Window(int width, int height, LPCSTR windowTitle);
 	~Window();
+	Window(const Window&) = delete;
+	Window& operator = (const Window&) = delete;
+
 	static bool ProcessMessages(int& quitMessage);
 
 private:
 	// Windows Messages Handling Functions
-	static LRESULT CALLBACK HandleWindowCreation(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-	static LRESULT CALLBACK HandleMessageThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
 public:
-	dx11_graphics *gfx;
-	Keyboard kbd;
+	dx11_graphics *graphics;
+	Keyboard keyboard;
 	Mouse mouse;
 
 private:
@@ -76,6 +79,5 @@ private:
 	HWND window;
 	int width;
 	int height;
-	
 	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 };

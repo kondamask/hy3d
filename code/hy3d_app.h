@@ -1,3 +1,4 @@
+#pragma once
 #include "win32_window.h"
 
 class App

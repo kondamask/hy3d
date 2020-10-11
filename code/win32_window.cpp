@@ -1,19 +1,12 @@
 #include "win32_window.h"
 #include <sstream>
 
-Window::Window()
-	:
-	Window(720, 480, "HY3D DEV")
-{
-}
-
 Window::Window(int width, int height, LPCSTR windowTitle)
 	:
 	width(width), height(height)
 {
 	instance = GetModuleHandle(nullptr);
-
-	LPCSTR windowClassName = "HEYYO3D_Window_Class";
+	
 	WNDCLASSA windowClass = {};
 
 	// Set window class properties
@@ -62,9 +55,33 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// CREATESTRUCT structure pointed to by the lParam of 
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
+	
+	gfx = new dx11_graphics(window);
 
 	ShowWindow(window, SW_SHOWDEFAULT);
-	gfx = new dx11_graphics(window);
+}
+
+Window::~Window()
+{
+	delete gfx;
+	UnregisterClassA(windowClassName, instance);
+	DestroyWindow(window);
+}
+
+bool Window::ProcessMessages(int& quitMessage)
+{
+	MSG message;
+	while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
+	{
+		quitMessage = (int)message.wParam;
+		if (message.message == WM_QUIT)
+		{
+			return false;
+		} 
+		TranslateMessage(&message);
+		DispatchMessage(&message);
+	}
+	return true;
 }
 
 LRESULT Window::HandleWindowCreation(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
@@ -220,61 +237,3 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 	}
 	return result;
 }
-
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-/*
-Window::Exception::Exception(int line, const char * file, HRESULT hr) noexcept
-	:
-	HY3D_Exception(line, file),
-	hr(hr)
-{
-}
-
-const char * Window::Exception::what() const noexcept
-{
-	std::ostringstream result;
-	result << GetType() << std::endl
-		<< "Error: " << GetErrorCode() << std::endl
-		<< "Description: " << GetErrorString() << std::endl
-		<< GetOriginString();
-
-	// after this function, the stringstream dies, so we need to save the
-	// message into a provided buffer.
-	whatBuffer = result.str();
-	return whatBuffer.c_str();
-}
-
-const char * Window::Exception::GetType() const noexcept
-{
-	return "HY3D Window Exception";
-}
-
-std::string Window::Exception::TranslateErrorCode(HRESULT hr) noexcept
-{
-	char *pBuffer = nullptr;
-	if (FormatMessageA(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPSTR)(&pBuffer),
-		0, nullptr))
-	{
-		std::string error = pBuffer;
-		LocalFree(pBuffer);
-		return error;
-	}
-	return "Unidentified error code";
-}
-
-HRESULT Window::Exception::GetErrorCode() const noexcept
-{
-	return hr;
-}
-
-std::string Window::Exception::GetErrorString() const noexcept
-{
-	return TranslateErrorCode(hr);
-}
-*/

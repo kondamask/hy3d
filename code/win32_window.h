@@ -56,9 +56,17 @@ struct Mouse
 class Window
 {
 public:
-	Window();
 	Window(int width, int height, LPCSTR windowTitle);
+	~Window();
+	static bool ProcessMessages(int& quitMessage);
 
+private:
+	// Windows Messages Handling Functions
+	static LRESULT CALLBACK HandleWindowCreation(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK HandleMessageThunk(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+
+public:
 	dx11_graphics *gfx;
 	Keyboard kbd;
 	Mouse mouse;
@@ -69,32 +77,5 @@ private:
 	int width;
 	int height;
 	
-	static LRESULT CALLBACK HandleWindowCreation(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
-	static LRESULT CALLBACK HandleMessageThunk(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
-	LRESULT CALLBACK HandleMessage(HWND handle, UINT message, WPARAM wParam, LPARAM lParam);
+	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 };
-
-////////////	EXCEPTIONS	///////////////
-
-/*
-public:
-	class Exception : public HY3D_Exception
-	{
-	public:
-		Exception(int line, const char* file, HRESULT hr) noexcept;
-		const char* what() const noexcept override;
-		const char* GetType() const noexcept override;
-		static std::string TranslateErrorCode(HRESULT hr) noexcept;
-		HRESULT GetErrorCode() const noexcept;
-		std::string GetErrorString() const noexcept;
-
-	private:
-		HRESULT hr;
-	};
-};
-
-
-// error exception helper macro
-#define HY3D_WND_EXCEPT( hr ) Window::Exception( __LINE__,__FILE__,hr )
-#define HY3D_WND_LAST_EXCEPT() Window::Exception( __LINE__,__FILE__,GetLastError() )
-*/

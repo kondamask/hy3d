@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "${workspaceFolder}\\code\\build.bat",
+            "command": "${workspaceFolder}\\misc\\build.bat",
             "problemMatcher": []
         }
     ]

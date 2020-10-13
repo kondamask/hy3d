@@ -1,6 +1,6 @@
 #pragma once
 #include "hy3d_windows.h"
-#include "dx11_graphics.h"
+#include "win32_graphics.h"
 #include <bitset>
 
 using VK_CODE = unsigned char;
@@ -70,7 +70,7 @@ private:
 	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
 public:
-	dx11_graphics *graphics;
+	win32_graphics graphics;
 	Keyboard keyboard;
 	Mouse mouse;
 

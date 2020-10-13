@@ -30,7 +30,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// Adjuct the window size according to the style we
 	// have for out window, while keeping the client size
 	// the same.
-	AdjustWindowRect(&rect, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE);
+	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
 	width = rect.right - rect.left;
 	height = rect.bottom - rect.top;
 
@@ -38,7 +38,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	window = CreateWindowA(
 		windowClassName, 
 		windowTitle,
-		WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,
+		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		CW_USEDEFAULT, CW_USEDEFAULT, // X, Y
 		width, height,
 		nullptr, nullptr, 
@@ -51,15 +51,12 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	// CREATESTRUCT structure pointed to by the lParam of 
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
-	
-	graphics = new dx11_graphics(window);
 
 	ShowWindow(window, SW_SHOWDEFAULT);
 }
 
 Window::~Window()
 {
-	delete graphics;
 	UnregisterClassA(windowClassName, instance);
 	DestroyWindow(window);
 }
@@ -111,16 +108,22 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 	LRESULT result = 0;
 	switch (message)
 	{
-	case WM_CLOSE:
+	case WM_SIZE:
 	{
-		PostQuitMessage(0);
-		return 0;
-		break;
+		RECT clientRect;
+		GetClientRect(window, &clientRect);
+		int width = clientRect.right - clientRect.left;
+		int height = clientRect.bottom - clientRect.top;
+		graphics.MakeDIBSection(width, height);
 	}
-
-	case WM_KILLFOCUS:
+	case WM_PAINT:
 	{
-		keyboard.Clear();
+		PAINTSTRUCT paint;
+		HDC deviceContext = BeginPaint(window, &paint);
+		int width = paint.rcPaint.right - paint.rcPaint.left;
+		int height = paint.rcPaint.bottom - paint.rcPaint.top;
+		graphics.Update(deviceContext, width, height);
+		EndPaint(window, &paint);
 		break;
 	}
 
@@ -220,6 +223,19 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 		break;
 	}
 	/**************************************************/
+
+	case WM_CLOSE:
+	{
+		PostQuitMessage(0);
+		return 0;
+		break;
+	}
+
+	case WM_KILLFOCUS:
+	{
+		keyboard.Clear();
+		break;
+	}
 
 	case WM_DESTROY:
 	{

@@ -10,9 +10,7 @@ int CALLBACK WinMain(
 	int quitMessage = -1;
     while(Window::ProcessMessages(quitMessage))
     {
-		// do frame
-        window.graphics->RenderBackground(1.0f,0.1f,0.9f);
-    	window.graphics->EndFrame();
+		// do stuff
     }
     return quitMessage;
 }

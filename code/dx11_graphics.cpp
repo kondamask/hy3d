@@ -23,7 +23,7 @@ dx11_graphics::dx11_graphics(HWND window)
     swapChainDesc.SwapEffect =DXGI_SWAP_EFFECT_DISCARD;
     swapChainDesc.Flags = 0;
 
-    D3D11CreateDeviceAndSwapChain(
+    HRESULT createResult = D3D11CreateDeviceAndSwapChain(
     0,
     D3D_DRIVER_TYPE_HARDWARE,
     0,
@@ -36,6 +36,11 @@ dx11_graphics::dx11_graphics(HWND window)
     &device,
     0,
     &deviceContext);
+
+    if (createResult != S_OK)
+    {
+        // TODO: LOG
+    }
 
     ID3D11Resource* backbuffer = 0;
     swapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void**)&backbuffer);

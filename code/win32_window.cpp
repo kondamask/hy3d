@@ -5,20 +5,18 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 {
 	instance = GetModuleHandle(nullptr);
 	
-	WNDCLASSA windowClass = {};
-
 	// Set window class properties
+	WNDCLASSA windowClass = {};
 	windowClass.style = CS_OWNDC;
 	windowClass.lpfnWndProc = CreateWindowProc;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
 	windowClass.hbrBackground = 0;
-	windowClass.hCursor = LoadCursor(instance, IDC_ARROW);
-	windowClass.hIcon = (HICON)LoadIconA(instance, "hy3d.ico");
-
-	
+	windowClass.hCursor = LoadCursor(instance, IDC_ARROW);	
+	windowClass.hIcon = LoadIconA(instance, "hy3d.ico");
 	if (!RegisterClassA(&windowClass))
 	{
+		OutputDebugStringA("Window class wasn't registered.\n");
 		return;
 	}
 

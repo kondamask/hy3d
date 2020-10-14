@@ -1,38 +1,38 @@
 #include "win32_window.h"
 
 Window::Window(int width, int height, LPCSTR windowTitle)
-	:width(width), height(height)
+	:dimensions({width, height})
 {
 	instance = GetModuleHandle(nullptr);
 	
 	// Set window class properties
 	WNDCLASSA windowClass = {};
-	windowClass.style = CS_OWNDC;
+	windowClass.style = CS_HREDRAW|CS_VREDRAW;
 	windowClass.lpfnWndProc = CreateWindowProc;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
-	windowClass.hbrBackground = 0;
-	windowClass.hCursor = LoadCursor(instance, IDC_ARROW);	
-	windowClass.hIcon = LoadIconA(instance, "hy3d.ico");
 	if (!RegisterClassA(&windowClass))
 	{
 		OutputDebugStringA("Window class wasn't registered.\n");
 		return;
 	}
 
+	graphics.InitializeBackbuffer(dimensions.width, dimensions.height);
+
 	// Declare the _client_ size
 	RECT rect = { 0 };
 	rect.left = 100;
 	rect.top = 100;
-	rect.right = rect.left + width;
-	rect.bottom = rect.top + height;
+	rect.right = rect.left + dimensions.width;
+	rect.bottom = rect.top + dimensions.height;
 
 	// Adjuct the window size according to the style we
 	// have for out window, while keeping the client size
 	// the same.
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
-	width = rect.right - rect.left;
-	height = rect.bottom - rect.top;
+	dimensions.width = rect.right - rect.left;
+	dimensions.height = rect.bottom - rect.top;
+	
 
 	// Create the window
 	window = CreateWindowA(
@@ -40,7 +40,7 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 		windowTitle,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		CW_USEDEFAULT, CW_USEDEFAULT, // X, Y
-		width, height,
+		dimensions.width, dimensions.height,
 		nullptr, nullptr, 
 		instance, 
 		this // * See comment bellow
@@ -64,7 +64,7 @@ Window::~Window()
 bool Window::ProcessMessages(int& quitMessage)
 {
 	MSG message;
-	while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
+	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 	{
 		quitMessage = (int)message.wParam;
 		if (message.message == WM_QUIT)
@@ -75,6 +75,13 @@ bool Window::ProcessMessages(int& quitMessage)
 		DispatchMessage(&message);
 	}
 	return true;
+}
+
+void Window::Update()
+{
+	HDC deviceContext = GetDC(window);
+	graphics.DisplayPixelBuffer(GetDC(window));
+	ReleaseDC(window, deviceContext);
 }
 
 LRESULT Window::CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
@@ -108,21 +115,11 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 	LRESULT result = 0;
 	switch (message)
 	{
-	case WM_SIZE:
-	{
-		RECT clientRect;
-		GetClientRect(window, &clientRect);
-		int width = clientRect.right - clientRect.left;
-		int height = clientRect.bottom - clientRect.top;
-		graphics.MakeDIBSection(width, height);
-	}
 	case WM_PAINT:
 	{
 		PAINTSTRUCT paint;
 		HDC deviceContext = BeginPaint(window, &paint);
-		int width = paint.rcPaint.right - paint.rcPaint.left;
-		int height = paint.rcPaint.bottom - paint.rcPaint.top;
-		graphics.Update(deviceContext, width, height);
+		graphics.DisplayPixelBuffer(deviceContext);
 		EndPaint(window, &paint);
 		break;
 	}
@@ -156,7 +153,9 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 	case WM_MOUSEMOVE:
 	{
 		POINTS p = MAKEPOINTS(lParam);
-		bool isInWindow = p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
+		bool isInWindow = 
+				p.x >= 0 && p.x < dimensions.width && 
+				p.y >= 0 && p.y < dimensions.height;
 		if (isInWindow)
 		{
 			mouse.SetPos(p.x, p.y);

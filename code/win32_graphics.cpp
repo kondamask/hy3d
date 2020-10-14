@@ -1,49 +1,56 @@
 #include "win32_graphics.h"
 
-void win32_graphics::MakeDIBSection(int width, int height)
+void win32_graphics::InitializeBackbuffer(int width, int height)
 {    
-    if(bitmapMemory)
+    if(buffer.memory)
     {
-        VirtualFree(bitmapMemory, 0, MEM_RELEASE);
+        VirtualFree(buffer.memory, 0, MEM_RELEASE);
     }
 
-    bitmapWidth = width;
-    bitmapHeight = height;
+    buffer.width = width;
+    buffer.height = height;
+    buffer.bytesPerPixel = 4;
 
-	bitmapInfo = {};
-	bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
-	bitmapInfo.bmiHeader.biWidth = width;
-	bitmapInfo.bmiHeader.biHeight = height;
-	bitmapInfo.bmiHeader.biPlanes = 1;
-	bitmapInfo.bmiHeader.biBitCount = 32;
-	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	buffer.info = {};
+	buffer.info.bmiHeader.biSize = sizeof(buffer.info.bmiHeader);
+	buffer.info.bmiHeader.biWidth = width;
+	buffer.info.bmiHeader.biHeight = height; // bottom up y. "-height" fot top down y
+	buffer.info.bmiHeader.biPlanes = 1;
+	buffer.info.bmiHeader.biBitCount = 32;
+	buffer.info.bmiHeader.biCompression = BI_RGB;
 
-    int bytesPerPixel = 4;
-    int bitmapMemorySize = width* height * bytesPerPixel;
-    bitmapMemory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-
-    
-    PutPixel(0, 0, {0, 255,0});
-    PutPixel(1, 0, {0,0,255});
+    buffer.size = buffer.width * buffer.height * buffer.bytesPerPixel;
+    buffer.memory = VirtualAlloc(0, buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-void win32_graphics::Update(HDC deviceContext, int windoWidth, int windowheight)
+void win32_graphics::ClearBackbuffer()
+{
+    if(buffer.memory)
+    {
+        VirtualFree(buffer.memory, 0, MEM_RELEASE);
+    }
+    buffer.memory = VirtualAlloc(0, buffer.size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+void win32_graphics::DisplayPixelBuffer(HDC deviceContext)
 {
 	StretchDIBits(
 		deviceContext,
-		0, 0, windoWidth, windowheight,
-		0, 0, bitmapWidth, bitmapHeight,
-		bitmapMemory,
-        &bitmapInfo,
+		0, 0, buffer.width, buffer.height,
+		0, 0, buffer.width, buffer.height,
+		buffer.memory,
+        &buffer.info,
         DIB_RGB_COLORS,
         SRCCOPY);
+    ClearBackbuffer();
 }
 
 void win32_graphics::PutPixel(int x, int y, Color c)
 {
-    int pitch = bitmapWidth*bytesPerPixel;
-    uint8_t *pixel = (uint8_t *)bitmapMemory + y * pitch + x * bytesPerPixel;
-    pixel[2] = c.r; // RED
-    pixel[1] = c.g; // GREEN
-    pixel[0] = c.b; // BLUE
+    // Pixel 32 bits
+    // Memory:      BB GG RR xx
+    // Register:    xx RR GG BB   
+
+	uint32_t *pixel = (uint32_t *)buffer.memory + y * buffer.width + x;
+	*pixel++ = (c.r << 16) | (c.g << 8) | (c.b);
 }

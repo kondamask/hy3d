@@ -6,11 +6,28 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine, 
 	int nShowCmd)
 {
-	Window window(720, 480, "HY3D DEV");
+	Window window(1024, 512, "HY3D DEV");
 	int quitMessage = -1;
+
+	Color c{255,0,255};
+
+	int x = 100;
+	int y = 100;
     while(Window::ProcessMessages(quitMessage))
     {
-		// do stuff
+		window.graphics.DrawBufferBounds();
+
+		if(window.keyboard.IsPressed(VK_UP))
+			y += 1;
+		if(window.keyboard.IsPressed(VK_DOWN))
+			y -= 1;
+		if(window.keyboard.IsPressed(VK_LEFT))
+			x -= 1;
+		if(window.keyboard.IsPressed(VK_RIGHT))
+			x += 1;
+
+		window.graphics.PutPixel(x,y, {255,0,0});
+		window.Update();
     }
     return quitMessage;
 }

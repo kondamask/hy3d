@@ -53,6 +53,11 @@ struct Mouse
 	}
 };
 
+struct Dimensions
+{
+	int width, height;
+};
+
 class Window
 {
 public:
@@ -62,6 +67,7 @@ public:
 	Window& operator = (const Window&) = delete;
 
 	static bool ProcessMessages(int& quitMessage);
+	void Update();
 
 private:
 	// Windows Messages Handling Functions
@@ -77,7 +83,6 @@ public:
 private:
 	HINSTANCE instance;
 	HWND window;
-	int width;
-	int height;
+	Dimensions dimensions;
 	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 };

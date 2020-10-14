@@ -45,6 +45,25 @@ void win32_graphics::DisplayPixelBuffer(HDC deviceContext)
     ClearBackbuffer();
 }
 
+void win32_graphics::DrawBufferBounds()
+{
+    Color c{0,255,0};
+    uint32_t *pixel = (uint32_t*)buffer.memory;
+    for(int y=0; y<buffer.height; y++)
+    {
+        *pixel = (c.r << 16) | (c.g << 8) | (c.b);
+        *(pixel+buffer.width-1) = (c.r << 16) | (c.g << 8) | (c.b);
+        pixel += buffer.width;
+    }
+	pixel = (uint32_t*)buffer.memory + 1;
+	for (int x = 0; x < buffer.width - 1; x++)
+	{
+		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
+		*(pixel + buffer.size/buffer.bytesPerPixel - buffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
+		pixel++;
+	}
+}
+
 void win32_graphics::PutPixel(int x, int y, Color c)
 {
     // Pixel 32 bits
@@ -52,5 +71,13 @@ void win32_graphics::PutPixel(int x, int y, Color c)
     // Register:    xx RR GG BB   
 
 	uint32_t *pixel = (uint32_t *)buffer.memory + y * buffer.width + x;
-	*pixel++ = (c.r << 16) | (c.g << 8) | (c.b);
+    bool isInBuffer = 
+        y >= 0 &&
+        y < buffer.height &&
+        x >= 0 && // left
+        x < buffer.width; // right
+    if(isInBuffer)
+    {
+        *pixel = (c.r << 16) | (c.g << 8) | (c.b);
+    }
 }

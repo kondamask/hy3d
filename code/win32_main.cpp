@@ -11,8 +11,9 @@ int CALLBACK WinMain(
 
 	Color c{255,0,255};
 
-	int x = 100;
-	int y = 100;
+	int x = 1024/2;
+	int y = 512/2;
+
     while(Window::ProcessMessages(quitMessage))
     {
 		window.graphics.DrawBufferBounds();

@@ -25,19 +25,7 @@ public:
 	void DisplayPixelBuffer(HDC deviceContext);
     void PutPixel(int x, int y, Color c);
 
-    void DrawBufferBounds()
-    {
-        for(int x=0; x<buffer.width; x++)
-    	{
-    	    PutPixel(x, 0, {0, 255,0});
-            PutPixel(x, buffer.height-1, {0, 255,0});
-    	}
-    	for(int y=0; y<buffer.height; y++)
-    	{
-            PutPixel(0, y, {0, 255,0});
-    	    PutPixel(buffer.width-1, y, {0, 255,0});
-    	}
-    }
+    void DrawBufferBounds();
 
 private:
     PixelBuffer buffer;    

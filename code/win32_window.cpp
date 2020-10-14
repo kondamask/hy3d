@@ -133,6 +133,11 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 		{
 			keyboard.Press((VK_CODE)wParam);
 		}
+		if(keyboard.IsPressed(VK_F4) && keyboard.IsPressed(VK_MENU))
+		{
+			PostQuitMessage(0);
+			return 0;
+		}
 		break;
 	}
 	case WM_SYSKEYUP:

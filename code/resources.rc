@@ -1,0 +1,3 @@
+#include "resources.h"
+
+HY3D_ICON ICON "hy3d.ico"

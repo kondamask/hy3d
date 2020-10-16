@@ -10,7 +10,7 @@ struct Color
 struct PixelBuffer
 {
     BITMAPINFO info;
-	void* memory;
+    void *memory;
     int width;
     int height;
     int bytesPerPixel;
@@ -22,11 +22,12 @@ class win32_graphics
 public:
     void InitializeBackbuffer(int width, int height);
     void ClearBackbuffer();
-	void DisplayPixelBuffer(HDC deviceContext);
+    void DisplayPixelBuffer(HDC deviceContext);
     void PutPixel(int x, int y, Color c);
 
     void DrawBufferBounds();
+    void DrawTest(int x, int y);
 
 private:
-    PixelBuffer buffer;    
+    PixelBuffer buffer;
 };

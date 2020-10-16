@@ -7,7 +7,7 @@ using VK_CODE = unsigned char;
 
 struct Keyboard
 {
-	char c = '\0';
+char c = '\0';
 	bool autoRepeatEnabled = false;
 	std::bitset<256> keyStates;
 
@@ -15,7 +15,7 @@ struct Keyboard
 	{
 		c = '\0';
 	}
-	
+
 	void SetChar(char c_in)
 	{
 		c = c_in;
@@ -63,14 +63,19 @@ class Window
 public:
 	Window(int width, int height, LPCSTR windowTitle);
 	~Window();
-	Window(const Window&) = delete;
-	Window& operator = (const Window&) = delete;
+	Window(const Window &) = delete;
+	Window &operator=(const Window &) = delete;
 
-	static bool ProcessMessages(int& quitMessage);
+	static bool ProcessMessages(int &quitMessage);
 	void Update();
 
 private:
-	// Windows Messages Handling Functions
+	// NOTE:
+	// On window creation we set the proc function to be the CreateWindowProc which
+	// handles the window creation when we get a WM_CREATE message.
+	// After that we change the window proc function to ForwardMessageToClassHandler
+	// which gets called every time we get a message and forwards it to the class
+	// message handling function from where we can call our class functions.
 	static LRESULT CALLBACK CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);

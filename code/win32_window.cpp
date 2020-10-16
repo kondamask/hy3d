@@ -1,26 +1,31 @@
 #include "win32_window.h"
+#include "resources.h"
 
 Window::Window(int width, int height, LPCSTR windowTitle)
-	:dimensions({width, height})
+	: dimensions({width, height})
 {
 	instance = GetModuleHandle(nullptr);
-	
+
 	// Set window class properties
-	WNDCLASSA windowClass = {};
-	windowClass.style = CS_HREDRAW|CS_VREDRAW;
+	WNDCLASS windowClass = {};
+	windowClass.style = CS_HREDRAW | CS_VREDRAW;
 	windowClass.lpfnWndProc = CreateWindowProc;
 	windowClass.lpszClassName = windowClassName;
 	windowClass.hInstance = instance;
-	if (!RegisterClassA(&windowClass))
+
+	// TODO: FIX THE FUCKING ICON.
+	// windowClass.hIcon = LoadIcon(instance, MAKEINTRESOURCE(HY3D_ICON));
+
+	if (!RegisterClass(&windowClass))
 	{
-		OutputDebugStringA("Window class wasn't registered.\n");
+		OutputDebugString("Window class wasn't registered.\n");
 		return;
 	}
 
 	graphics.InitializeBackbuffer(dimensions.width, dimensions.height);
 
-	// Declare the _client_ size
-	RECT rect = { 0 };
+	// Declare the window client size
+	RECT rect = {0};
 	rect.left = 100;
 	rect.top = 100;
 	rect.right = rect.left + dimensions.width;
@@ -32,23 +37,21 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
 	dimensions.width = rect.right - rect.left;
 	dimensions.height = rect.bottom - rect.top;
-	
 
 	// Create the window
-	window = CreateWindowA(
-		windowClassName, 
+	window = CreateWindow(
+		windowClassName,
 		windowTitle,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 		CW_USEDEFAULT, CW_USEDEFAULT, // X, Y
 		dimensions.width, dimensions.height,
-		nullptr, nullptr, 
-		instance, 
-		this // * See comment bellow
-	); 
+		nullptr, nullptr,
+		instance,
+		this // * See note bellow
+	);
 
-	// *
-	// A value to be passed to the window through the 
-	// CREATESTRUCT structure pointed to by the lParam of 
+	// NOTE: A value to be passed to the window through the
+	// CREATESTRUCT structure pointed to by the lParam of
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
 
@@ -57,11 +60,11 @@ Window::Window(int width, int height, LPCSTR windowTitle)
 
 Window::~Window()
 {
-	UnregisterClassA(windowClassName, instance);
+	UnregisterClass(windowClassName, instance);
 	DestroyWindow(window);
 }
 
-bool Window::ProcessMessages(int& quitMessage)
+bool Window::ProcessMessages(int &quitMessage)
 {
 	MSG message;
 	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
@@ -70,7 +73,7 @@ bool Window::ProcessMessages(int& quitMessage)
 		if (message.message == WM_QUIT)
 		{
 			return false;
-		} 
+		}
 		TranslateMessage(&message);
 		DispatchMessage(&message);
 	}
@@ -86,13 +89,13 @@ void Window::Update()
 
 LRESULT Window::CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if(message == WM_CREATE)
+	if (message == WM_CREATE)
 	{
 		// extract pointer to window class from creation data
-		CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
+		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
 		if (pCreate)
 		{
-			Window* pWindow = (Window*)(pCreate->lpCreateParams);
+			Window *pWindow = (Window *)(pCreate->lpCreateParams);
 			// Set WinAPI-managed user data to store ptr to window class
 			SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR)(pWindow));
 			// Set message proc to normal handler
@@ -101,12 +104,14 @@ LRESULT Window::CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARA
 			return pWindow->HandleMessage(window, message, wParam, lParam);
 		}
 	}
-	return DefWindowProc(window, message, wParam, lParam);;
+
+	return DefWindowProc(window, message, wParam, lParam);
+	;
 }
 
 LRESULT Window::ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	Window* pWindow = (Window*)GetWindowLongPtr(window, GWLP_USERDATA);
+	Window *pWindow = (Window *)GetWindowLongPtr(window, GWLP_USERDATA);
 	return pWindow->HandleMessage(window, message, wParam, lParam);
 }
 
@@ -133,7 +138,7 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 		{
 			keyboard.Press((VK_CODE)wParam);
 		}
-		if(keyboard.IsPressed(VK_F4) && keyboard.IsPressed(VK_MENU))
+		if (keyboard.IsPressed(VK_F4) && keyboard.IsPressed(VK_MENU))
 		{
 			PostQuitMessage(0);
 			return 0;
@@ -153,18 +158,18 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 		break;
 	}
 	/**************************************************/
-	
+
 	/****************** MOUSE EVENTS ******************/
 	case WM_MOUSEMOVE:
 	{
 		POINTS p = MAKEPOINTS(lParam);
-		bool isInWindow = 
-				p.x >= 0 && p.x < dimensions.width && 
-				p.y >= 0 && p.y < dimensions.height;
+		bool isInWindow =
+			p.x >= 0 && p.x < dimensions.width &&
+			p.y >= 0 && p.y < dimensions.height;
 		if (isInWindow)
 		{
 			mouse.SetPos(p.x, p.y);
-			if(!mouse.isInWindow) // if it wasn't in the window before
+			if (!mouse.isInWindow) // if it wasn't in the window before
 			{
 				SetCapture(window);
 				mouse.isInWindow = true;
@@ -226,7 +231,7 @@ LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM l
 		mouse.SetPos(p.x, p.y);
 		break;
 	}
-	/**************************************************/
+		/**************************************************/
 
 	case WM_CLOSE:
 	{

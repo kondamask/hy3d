@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\..\\build\\hy3d.exe",
+            "cwd": "${workspaceFolder}\\data",
+            "preLaunchTask": "build",
+            "symbolSearchPath": "${workspaceFolder}\\..\\build",
+            "logging": {
+                "moduleLoad": false
+            }
+        }
+    ]
+}

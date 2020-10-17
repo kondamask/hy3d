@@ -1,5 +1,6 @@
 #pragma once
 #include "hy3d_windows.h"
+#include "hy3d_vector.h"
 #include <stdint.h>
 
 struct Color
@@ -17,7 +18,7 @@ struct PixelBuffer
     int size;
 };
 
-class win32_graphics
+class Graphics
 {
 public:
     void InitializeBackbuffer(int width, int height);
@@ -27,6 +28,10 @@ public:
 
     void DrawBufferBounds();
     void DrawTest(int x, int y);
+    void DrawLine(vec3 a, vec3 b, Color c);
+
+    int Width() { return buffer.width; }
+    int Height() { return buffer.height; }
 
 private:
     PixelBuffer buffer;

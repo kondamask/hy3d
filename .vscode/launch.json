@@ -5,7 +5,7 @@
             "name": "launch",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\..\\build\\hy3d.exe",
+            "program": "${workspaceFolder}\\build\\hy3d.exe",
             "cwd": "${workspaceFolder}\\data",
             "preLaunchTask": "build",
             "symbolSearchPath": "${workspaceFolder}\\..\\build",

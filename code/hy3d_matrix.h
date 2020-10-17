@@ -1,3 +1,4 @@
+#pragma once
 #include "hy3d_vector.h"
 
 struct mat3

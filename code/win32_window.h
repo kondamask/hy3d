@@ -66,7 +66,6 @@ public:
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 
-	static bool ProcessMessages(int &quitMessage);
 	void Update();
 
 private:
@@ -81,7 +80,7 @@ private:
 	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
 public:
-	win32_graphics graphics;
+	Graphics graphics;
 	Keyboard keyboard;
 	Mouse mouse;
 

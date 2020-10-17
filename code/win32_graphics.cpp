@@ -1,6 +1,6 @@
 #include "win32_graphics.h"
 
-void win32_graphics::InitializeBackbuffer(int width, int height)
+void Graphics::InitializeBackbuffer(int width, int height)
 {
     if (buffer.memory)
     {
@@ -23,7 +23,7 @@ void win32_graphics::InitializeBackbuffer(int width, int height)
     buffer.memory = VirtualAlloc(0, buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-void win32_graphics::ClearBackbuffer()
+void Graphics::ClearBackbuffer()
 {
     if (buffer.memory)
     {
@@ -32,7 +32,7 @@ void win32_graphics::ClearBackbuffer()
     buffer.memory = VirtualAlloc(0, buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-void win32_graphics::DisplayPixelBuffer(HDC deviceContext)
+void Graphics::DisplayPixelBuffer(HDC deviceContext)
 {
     StretchDIBits(
         deviceContext,
@@ -42,10 +42,9 @@ void win32_graphics::DisplayPixelBuffer(HDC deviceContext)
         &buffer.info,
         DIB_RGB_COLORS,
         SRCCOPY);
-    ClearBackbuffer();
 }
 
-void win32_graphics::DrawBufferBounds()
+void Graphics::DrawBufferBounds()
 {
     Color c{0, 255, 0};
     uint32_t *pixel = (uint32_t *)buffer.memory;
@@ -64,7 +63,7 @@ void win32_graphics::DrawBufferBounds()
     }
 }
 
-void win32_graphics::DrawTest(int x_in, int y_in)
+void Graphics::DrawTest(int x_in, int y_in)
 {
     uint32_t *pixel = (uint32_t *)buffer.memory;
     int strechX = buffer.width / 255;
@@ -82,7 +81,51 @@ void win32_graphics::DrawTest(int x_in, int y_in)
     }
 }
 
-void win32_graphics::PutPixel(int x, int y, Color c)
+void Graphics::DrawLine(vec3 a, vec3 b, Color c)
+{
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    if (dx == 0.0f && dy == 0.0f)
+    {
+        PutPixel((int)a.x, (int)a.y, c);
+    }
+    else if (abs(dy) >= abs(dx))
+    {
+        if (dy < 0.0f)
+        {
+            vec3 temp = a;
+            a = b;
+            b = temp;
+        }
+
+        float m = dx / dy;
+        for (float x = a.x, y = a.y;
+             y < b.y;
+             y += 1.0f, x += m)
+        {
+            PutPixel((int)x, (int)y, c);
+        }
+    }
+    else
+    {
+        if (dx < 0.0f)
+        {
+            vec3 temp = a;
+            a = b;
+            b = temp;
+        }
+
+        float m = dy / dx;
+        for (float x = a.x, y = a.y;
+             x < b.x;
+             x += 1.0f, y += m)
+        {
+            PutPixel((int)x, (int)y, c);
+        }
+    }
+}
+
+void Graphics::PutPixel(int x, int y, Color c)
 {
     // Pixel 32 bits
     // Memory:      BB GG RR xx

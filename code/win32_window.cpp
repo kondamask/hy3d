@@ -1,5 +1,5 @@
 #include "win32_window.h"
-#include "resources.h"
+//#include "resources.h"
 
 Window::Window(int width, int height, LPCSTR windowTitle)
 	: dimensions({width, height})
@@ -64,26 +64,11 @@ Window::~Window()
 	DestroyWindow(window);
 }
 
-bool Window::ProcessMessages(int &quitMessage)
-{
-	MSG message;
-	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
-	{
-		quitMessage = (int)message.wParam;
-		if (message.message == WM_QUIT)
-		{
-			return false;
-		}
-		TranslateMessage(&message);
-		DispatchMessage(&message);
-	}
-	return true;
-}
-
 void Window::Update()
 {
 	HDC deviceContext = GetDC(window);
 	graphics.DisplayPixelBuffer(GetDC(window));
+	graphics.ClearBackbuffer();
 	ReleaseDC(window, deviceContext);
 }
 

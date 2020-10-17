@@ -23,7 +23,7 @@ struct vec3
         return *this;
     }
 
-    vec3 operator/(float b)
+    inline vec3 operator/(float b)
     {
         return vec3(x / b, y / b, z / b);
     }
@@ -41,7 +41,7 @@ struct vec3
     inline vec3 normal()
     {
         float l = length();
-        if(l == 0.0f)
+        if (l == 0.0f)
             return vec3();
         return (*this / l);
     }
@@ -57,12 +57,12 @@ struct vec3
 // addition, subtraction
 inline vec3 operator+(vec3 a, vec3 b)
 {
-    return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 inline vec3 operator-(vec3 a, vec3 b)
 {
-    return vec3(a.x - b.x, a.x - b.y, a.z - b.z);
+    return {a.x - b.x, a.x - b.y, a.z - b.z};
 }
 
 inline vec3 operator+=(vec3 &a, vec3 b)
@@ -80,7 +80,7 @@ inline vec3 operator-=(vec3 &a, vec3 b)
 // vector * number
 inline vec3 operator*(float a, vec3 b)
 {
-    return vec3(a * b.x, a * b.y, a * b.z);
+    return {a * b.x, a * b.y, a * b.z};
 }
 
 inline vec3 operator*(vec3 b, float a)
@@ -97,7 +97,7 @@ inline vec3 operator*=(vec3 &a, float b)
 // negative of a vector
 inline vec3 operator-(vec3 a)
 {
-    return vec3(-a.x, -a.y, -a.z);
+    return {-a.x, -a.y, -a.z};
 }
 
 // dot product

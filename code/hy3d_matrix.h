@@ -3,23 +3,50 @@
 
 struct mat3
 {
-    static mat3 Identity()
-    {
-        return {
-            1.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 1.0f};
-    }
-    static mat3 Scale(float factor)
-    {
-        return {
-            factor, 0.0f, 0.0f,
-            0.0f, factor, 0.0f,
-            0.0f, 0.0f, factor};
-    }
-
-    float cell[3][3]; // NOTE: [row][column]
+    float cell[3][3]; // [row][column]
 };
+
+static mat3 Identity()
+{
+    return {
+        1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f};
+}
+static mat3 Scale(float factor)
+{
+    return {
+        factor, 0.0f, 0.0f,
+        0.0f, factor, 0.0f,
+        0.0f, 0.0f, factor};
+}
+static mat3 RotateZ(float theta)
+{
+    float sinTheta = sin(theta);
+    float cosTheta = cos(theta);
+    return {
+        cosTheta, sinTheta, 0.0f,
+        -sinTheta, cosTheta, 0.0f,
+        0.0f, 0.0f, 1.0f};
+}
+static mat3 RotateY(float theta)
+{
+    float sinTheta = sin(theta);
+    float cosTheta = cos(theta);
+    return {
+        cosTheta, 0.0f, -sinTheta,
+        0.0f, 1.0f, 0.0f,
+        sinTheta, 0.0f, cosTheta};
+}
+static mat3 RotateX(float theta)
+{
+    float sinTheta = sin(theta);
+    float cosTheta = cos(theta);
+    return {
+        1.0f, 0.0f, 0.0f,
+        0.0f, cosTheta, sinTheta,
+        0.0f, -sinTheta, cosTheta};
+}
 
 mat3 operator*(mat3 a, mat3 b)
 {

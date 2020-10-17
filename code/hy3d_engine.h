@@ -11,7 +11,6 @@
 // The origin (0,0,0) is in the center of the screen.
 // We normalize the coordinates so that the far right, left, top and down
 // take values -1.0 and +1.0
-// So our sp
 
 struct hy3d_space
 {
@@ -55,11 +54,18 @@ private:
     Window window;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
+
+    // TEST:
+    float thetaX = 0.0f;
+    float thetaY = 0.0f;
+    float thetaZ = 0.0f;
+    float side = 1.0f;
 };
 
-// NOTE: ~~~~~~~~~~~~~~ TESTING ~~~~~~~~~~~~~~~~~~~ 
+// TEST:
 struct cube
 {
+    float thetaX, thetaY, thetaZ;
     int nVertices = 8;
     int nLines = 12;
     vec3 vertices[8];
@@ -69,7 +75,8 @@ struct cube
 			4,5,  5,7,	7,6,  6,4 };
 };
 
-cube MakeCube(float side)
+// TEST:
+cube MakeCube(float side, float thetaX, float thetaY, float thetaZ)
 {
     cube result;
     side /= 2.0f;
@@ -81,5 +88,8 @@ cube MakeCube(float side)
     result.vertices[5] = {side, -side, side};
     result.vertices[6] = {-side, side, side};
     result.vertices[7] = {side, side, side};
+    result.thetaX = thetaX;
+    result.thetaY = thetaY;
+    result.thetaZ = thetaZ;
     return result;
 }

@@ -89,7 +89,7 @@ void Graphics::DrawLine(vec3 a, vec3 b, Color c)
     {
         PutPixel((int)a.x, (int)a.y, c);
     }
-    else if (abs(dy) >= abs(dx))
+    else if (fabsf(dy) >= fabsf(dx))
     {
         if (dy < 0.0f)
         {

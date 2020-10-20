@@ -3,6 +3,7 @@
 #include "hy3d_vector.h"
 #include "hy3d_matrix.h"
 #include "hy3d_objects.h"
+#include <chrono>
 
 // NOTE:
 // The HY3D space is a 3d space where
@@ -46,6 +47,7 @@ struct hy3d_engine
     Window window;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
+    std::chrono::steady_clock::time_point frameStart;
 
     // TEST:
     orientation cubeOrientation{0.0f, 0.0f, 0.0f};
@@ -53,4 +55,3 @@ struct hy3d_engine
 };
 
 static void Run(hy3d_engine &e);
-

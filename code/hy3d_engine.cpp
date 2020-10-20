@@ -13,12 +13,18 @@ static void InitializeEngine(hy3d_engine &e)
 
     e.screenTransformer.xFactor = e.window.graphics.width / e.space.width;
     e.screenTransformer.yFactor = e.window.graphics.height / e.space.height;
+
+    e.frameStart = std::chrono::steady_clock::now();
 }
 
 static void UpdateFrame(hy3d_engine &e)
 {
-    // TODO: Add frame timer and update values properly
-    float rotSpeed = 0.003f;
+    std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
+    std::chrono::duration<float> frameTime = frameEnd - e.frameStart;
+    float dt = frameTime.count();
+    e.frameStart = frameEnd;
+
+    float rotSpeed = 1.5f * dt;
     if (e.window.keyboard.IsPressed(VK_UP))
         e.cubeOrientation.thetaX -= rotSpeed;
     if (e.window.keyboard.IsPressed(VK_DOWN))
@@ -39,7 +45,7 @@ static void UpdateFrame(hy3d_engine &e)
         e.cubeOrientation.thetaZ = 0.0f;
     }
 
-    float dSize = 0.002f;
+    float dSize = 1.0f * dt;
     if (e.window.keyboard.IsPressed('Z'))
         e.cubeSide -= dSize;
     if (e.window.keyboard.IsPressed('X'))

@@ -24,11 +24,12 @@ int CALLBACK WinMain(
 	int nShowCmd)
 {
 	hy3d_engine engine;
+	InitializeEngine(engine);
 	
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
-		engine.Run();
+		Run(engine);
 	}
 	return quitMessage;
 }

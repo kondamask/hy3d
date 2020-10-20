@@ -1,13 +1,23 @@
 #pragma once
 #include "hy3d_windows.h"
-#include "win32_graphics.h"
+#include "hy3d_vector.h"
 #include <bitset>
 
-using VK_CODE = unsigned char;
+#define VK_CODE unsigned char
+
+struct Dimensions
+{
+	int width, height;
+};
+
+struct Color
+{
+	uint8_t r, g, b;
+};
 
 struct Keyboard
 {
-char c = '\0';
+	char c = '\0';
 	bool autoRepeatEnabled = false;
 	std::bitset<256> keyStates;
 
@@ -53,22 +63,26 @@ struct Mouse
 	}
 };
 
-struct Dimensions
+struct win32_graphics
 {
-	int width, height;
+	BITMAPINFO info;
+	void *memory;
+	int width;
+	int height;
+	int bytesPerPixel;
+	int size;
 };
 
-class Window
+struct Window
 {
-public:
-	Window(int width, int height, LPCSTR windowTitle);
-	~Window();
-	Window(const Window &) = delete;
-	Window &operator=(const Window &) = delete;
+	win32_graphics graphics;
+	Keyboard keyboard;
+	Mouse mouse;
+	HINSTANCE instance;
+	HWND handle;
+	Dimensions dimensions;
+	LPCSTR className = "HEYYO3D_Window_Class";
 
-	void Update();
-
-private:
 	// NOTE:
 	// On window creation we set the proc function to be the CreateWindowProc which
 	// handles the window creation when we get a WM_CREATE message.
@@ -78,15 +92,7 @@ private:
 	static LRESULT CALLBACK CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-
-public:
-	Graphics graphics;
-	Keyboard keyboard;
-	Mouse mouse;
-
-private:
-	HINSTANCE instance;
-	HWND window;
-	Dimensions dimensions;
-	LPCSTR windowClassName = "HEYYO3D_Window_Class";
 };
+
+static void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle);
+static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c);

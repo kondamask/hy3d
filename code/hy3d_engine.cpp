@@ -1,72 +1,74 @@
 #include "hy3d_engine.h"
 
-hy3d_engine::hy3d_engine()
-    : window(512, 512, "HY3D")
+static void InitializeEngine(hy3d_engine &e)
 {
-    space.left = -1.0f;
-    space.right = 1.0f;
-    space.top = 1.0f;
-    space.bottom = -1.0f;
-    space.width = space.right - space.left;
-    space.height = space.top - space.bottom;
+    InitializeWindow(e.window, 512, 512, "HY3D");
 
-    screenTransformer.xFactor = window.graphics.Width() / space.width;
-    screenTransformer.yFactor = window.graphics.Height() / space.height;
+    e.space.left = -1.0f;
+    e.space.right = 1.0f;
+    e.space.top = 1.0f;
+    e.space.bottom = -1.0f;
+    e.space.width = e.space.right - e.space.left;
+    e.space.height = e.space.top - e.space.bottom;
 
-    // TEST:
+    e.screenTransformer.xFactor = e.window.graphics.width / e.space.width;
+    e.screenTransformer.yFactor = e.window.graphics.height / e.space.height;
 }
 
-void hy3d_engine::Run()
+static void UpdateFrame(hy3d_engine &e)
 {
-    UpdateFrame();
-    ComposeFrame();
-    window.Update();
-}
-
-void hy3d_engine::UpdateFrame()
-{
+    // TODO: Add frame timer and update values properly
     float rotSpeed = 0.003f;
-    if (window.keyboard.IsPressed(VK_UP))
-        thetaX += rotSpeed;
-    if (window.keyboard.IsPressed(VK_DOWN))
-        thetaX -= rotSpeed;
-    if (window.keyboard.IsPressed(VK_LEFT))
-        thetaY -= rotSpeed;
-    if (window.keyboard.IsPressed(VK_RIGHT))
-        thetaY += rotSpeed;
-    if (window.keyboard.IsPressed('Q'))
-        thetaZ += rotSpeed;
-    if (window.keyboard.IsPressed('W'))
-        thetaZ -= rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_UP))
+        e.cubeOrientation.thetaX -= rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_DOWN))
+        e.cubeOrientation.thetaX += rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_LEFT))
+        e.cubeOrientation.thetaY -= rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_RIGHT))
+        e.cubeOrientation.thetaY += rotSpeed;
+    if (e.window.keyboard.IsPressed('Q'))
+        e.cubeOrientation.thetaZ += rotSpeed;
+    if (e.window.keyboard.IsPressed('W'))
+        e.cubeOrientation.thetaZ -= rotSpeed;
 
-    if (window.keyboard.IsPressed('R'))
+    if (e.window.keyboard.IsPressed('R'))
     {
-        thetaX = 0.0f;
-        thetaY = 0.0f;
-        thetaZ = 0.0f;
+        e.cubeOrientation.thetaX = 0.0f;
+        e.cubeOrientation.thetaY = 0.0f;
+        e.cubeOrientation.thetaZ = 0.0f;
     }
 
-    float changeSize = 0.002f;
-    if (window.keyboard.IsPressed('Z'))
-        side -= changeSize;
-    if (window.keyboard.IsPressed('X'))
-        side += changeSize;
+    float dSize = 0.002f;
+    if (e.window.keyboard.IsPressed('Z'))
+        e.cubeSide -= dSize;
+    if (e.window.keyboard.IsPressed('X'))
+        e.cubeSide += dSize;
 }
 
-void hy3d_engine::ComposeFrame()
+static void ComposeFrame(hy3d_engine &e)
 {
-    cube cube = MakeCube(side, thetaX, thetaY, thetaZ);
-    mat3 rotation = RotateX(cube.thetaX) * RotateY(cube.thetaY) * RotateZ(cube.thetaZ);
+    cube cube = MakeCube(e.cubeSide, e.cubeOrientation);
+    mat3 rotation = RotateX(e.cubeOrientation.thetaX) *
+                    RotateY(e.cubeOrientation.thetaY) *
+                    RotateZ(e.cubeOrientation.thetaZ);
     for (int i = 0; i < cube.nVertices; i++)
     {
         cube.vertices[i] *= rotation;
         cube.vertices[i] += {0.0f, 0.0f, 1.0f};
-        screenTransformer.Transform(cube.vertices[i]);
+        e.screenTransformer.Transform(cube.vertices[i]);
     }
     for (int i = 0; i < 24; i += 2)
     {
         vec3 a = cube.vertices[cube.lines[i]];
         vec3 b = cube.vertices[cube.lines[i + 1]];
-        window.graphics.DrawLine(a, b, {255, 255, 255});
+        DrawLine(e.window.graphics, a, b, {255, 255, 255});
     }
+}
+
+static void Run(hy3d_engine &e)
+{
+    UpdateFrame(e);
+    ComposeFrame(e);
+    Win32Update(e.window);
 }

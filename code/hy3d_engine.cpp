@@ -1,5 +1,9 @@
 #include "hy3d_engine.h"
 
+// TEST:
+static orientation cubeOrientation{0.0f, 0.0f, 0.0f};
+static float cubeScale = 1.0f;
+
 static void InitializeEngine(hy3d_engine &e)
 {
     InitializeWindow(e.window, 512, 512, "HY3D");
@@ -26,41 +30,42 @@ static void UpdateFrame(hy3d_engine &e)
 
     float rotSpeed = 1.5f * dt;
     if (e.window.keyboard.IsPressed(VK_UP))
-        e.cubeOrientation.thetaX -= rotSpeed;
+        cubeOrientation.thetaX -= rotSpeed;
     if (e.window.keyboard.IsPressed(VK_DOWN))
-        e.cubeOrientation.thetaX += rotSpeed;
+        cubeOrientation.thetaX += rotSpeed;
     if (e.window.keyboard.IsPressed(VK_LEFT))
-        e.cubeOrientation.thetaY -= rotSpeed;
+        cubeOrientation.thetaY -= rotSpeed;
     if (e.window.keyboard.IsPressed(VK_RIGHT))
-        e.cubeOrientation.thetaY += rotSpeed;
+        cubeOrientation.thetaY += rotSpeed;
     if (e.window.keyboard.IsPressed('Q'))
-        e.cubeOrientation.thetaZ += rotSpeed;
+        cubeOrientation.thetaZ += rotSpeed;
     if (e.window.keyboard.IsPressed('W'))
-        e.cubeOrientation.thetaZ -= rotSpeed;
+        cubeOrientation.thetaZ -= rotSpeed;
 
     if (e.window.keyboard.IsPressed('R'))
     {
-        e.cubeOrientation.thetaX = 0.0f;
-        e.cubeOrientation.thetaY = 0.0f;
-        e.cubeOrientation.thetaZ = 0.0f;
+        cubeOrientation.thetaX = 0.0f;
+        cubeOrientation.thetaY = 0.0f;
+        cubeOrientation.thetaZ = 0.0f;
     }
 
     float dSize = 1.0f * dt;
     if (e.window.keyboard.IsPressed('Z'))
-        e.cubeSide -= dSize;
+        cubeScale -= dSize;
     if (e.window.keyboard.IsPressed('X'))
-        e.cubeSide += dSize;
+        cubeScale += dSize;
 }
 
 static void ComposeFrame(hy3d_engine &e)
 {
-    cube cube = MakeCube(e.cubeSide, e.cubeOrientation);
-    mat3 rotation = RotateX(e.cubeOrientation.thetaX) *
-                    RotateY(e.cubeOrientation.thetaY) *
-                    RotateZ(e.cubeOrientation.thetaZ);
+    cube cube = MakeCube(1.0, cubeOrientation);
+    mat3 transformation = RotateX(cubeOrientation.thetaX) *
+                          RotateY(cubeOrientation.thetaY) *
+                          RotateZ(cubeOrientation.thetaZ) *
+                          Scale(cubeScale);
     for (int i = 0; i < cube.nVertices; i++)
     {
-        cube.vertices[i] *= rotation;
+        cube.vertices[i] *= transformation;
         cube.vertices[i] += {0.0f, 0.0f, 1.0f};
         e.screenTransformer.Transform(cube.vertices[i]);
     }

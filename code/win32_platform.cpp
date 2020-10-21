@@ -1,6 +1,199 @@
 #include "win32_platform.h"
 //#include "resources.h"
 
+// NOTE: PIXEL BUFFER FUNCTIONS
+static void ClearBackbuffer(win32_graphics &graphics)
+{
+	if (graphics.memory)
+	{
+		VirtualFree(graphics.memory, 0, MEM_RELEASE);
+	}
+	graphics.memory = VirtualAlloc(0, graphics.size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+static void DisplayPixelBuffer(win32_graphics &graphics, HDC deviceContext)
+{
+	StretchDIBits(
+		deviceContext,
+		0, 0, graphics.width, graphics.height,
+		0, 0, graphics.width, graphics.height,
+		graphics.memory,
+		&graphics.info,
+		DIB_RGB_COLORS,
+		SRCCOPY);
+}
+
+static void PutPixel(win32_graphics &graphics, int x, int y, Color c)
+{
+	// Pixel 32 bits
+	// Memory:      BB GG RR xx
+	// Register:    xx RR GG BB
+
+	uint32_t *pixel = (uint32_t *)graphics.memory + y * graphics.width + x;
+	bool isInBuffer =
+		y >= 0 &&
+		y < graphics.height &&
+		x >= 0 &&			// left
+		x < graphics.width; // right
+	if (isInBuffer)
+	{
+		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
+	}
+}
+
+// NOTE: WINDOWS MESSAGE HANDLER
+static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	Window *window = (Window *)GetWindowLongPtr(handle, GWLP_USERDATA);
+
+	LRESULT result = 0;
+	switch (message)
+	{
+	case WM_PAINT:
+	{
+		PAINTSTRUCT paint;
+		HDC deviceContext = BeginPaint(handle, &paint);
+		DisplayPixelBuffer(window->graphics, deviceContext);
+		EndPaint(handle, &paint);
+		break;
+	}
+
+	/***************** KEYBOARD EVENTS ****************/
+	case WM_SYSKEYDOWN:
+	case WM_KEYDOWN:
+	{
+		bool wasDown = ((lParam >> 30) & 1) != 0;
+		if (!wasDown || window->keyboard.autoRepeatEnabled)
+		{
+			window->keyboard.ToggleKey((VK_CODE)wParam);
+		}
+		if (window->keyboard.IsPressed(VK_F4) && window->keyboard.IsPressed(VK_MENU))
+		{
+			PostQuitMessage(0);
+			return 0;
+		}
+		break;
+	}
+	case WM_SYSKEYUP:
+	case WM_KEYUP:
+	{
+		window->keyboard.ToggleKey((VK_CODE)wParam);
+		break;
+	}
+	/**************************************************/
+
+	/****************** MOUSE EVENTS ******************/
+	case WM_MOUSEMOVE:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		bool isInWindow =
+			p.x >= 0 && p.x < window->dimensions.width &&
+			p.y >= 0 && p.y < window->dimensions.height;
+		if (isInWindow)
+		{
+			window->mouse.SetPos(p.x, p.y);
+			if (!window->mouse.isInWindow) // if it wasn't in the window before
+			{
+				SetCapture(handle);
+				window->mouse.isInWindow = true;
+			}
+		}
+		else
+		{
+			if (window->mouse.leftIsPressed || window->mouse.rightIsPressed)
+			{
+				// mouse is of the window but we're holding a button
+				window->mouse.SetPos(p.x, p.y);
+			}
+			else
+			{
+				// mouse is out of the window
+				ReleaseCapture();
+				window->mouse.isInWindow = false;
+			}
+		}
+		break;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		window->mouse.leftIsPressed = true;
+		break;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		window->mouse.rightIsPressed = true;
+		break;
+	}
+	case WM_LBUTTONUP:
+	{
+		window->mouse.leftIsPressed = false;
+		break;
+	}
+	case WM_RBUTTONUP:
+	{
+		window->mouse.rightIsPressed = false;
+		break;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		window->mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+		while (window->mouse.wheelDelta >= WHEEL_DELTA)
+		{
+			window->mouse.wheelDelta -= WHEEL_DELTA;
+			// wheel up action
+		}
+		while (window->mouse.wheelDelta <= -WHEEL_DELTA)
+		{
+			window->mouse.wheelDelta += WHEEL_DELTA;
+			// wheel down action
+		}
+	}
+	case WM_MOUSELEAVE:
+	{
+		POINTS p = MAKEPOINTS(lParam);
+		window->mouse.SetPos(p.x, p.y);
+		break;
+	}
+		/**************************************************/
+
+	case WM_CLOSE:
+	{
+		PostQuitMessage(0);
+		return 0;
+		break;
+	}
+
+	case WM_KILLFOCUS:
+	{
+		window->keyboard.Clear();
+		break;
+	}
+
+	case WM_DESTROY:
+	{
+		break;
+	}
+
+	case WM_CREATE:
+	{
+		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
+		if (pCreate)
+		{
+			Window *pWindow = (Window *)(pCreate->lpCreateParams);
+			// Set WinAPI-managed user data to store ptr to window class
+			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
+		}
+	}
+
+	default:
+	{
+		result = DefWindowProc(handle, message, wParam, lParam);
+	}
+	}
+	return result;
+}
+
+// NOTE: INIITALIZERS
 static void InitializeBackbuffer(win32_graphics &graphics, int width, int height)
 {
 	if (graphics.memory)
@@ -31,7 +224,7 @@ void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle)
 	// Set window class properties
 	WNDCLASS windowClass = {};
 	windowClass.style = CS_HREDRAW | CS_VREDRAW;
-	windowClass.lpfnWndProc = Window::CreateWindowProc;
+	windowClass.lpfnWndProc = MainWindowProc;
 	windowClass.lpszClassName = window.className;
 	windowClass.hInstance = window.instance;
 
@@ -83,27 +276,6 @@ void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle)
 	ShowWindow(window.handle, SW_SHOWDEFAULT);
 }
 
-static void ClearBackbuffer(win32_graphics &graphics)
-{
-	if (graphics.memory)
-	{
-		VirtualFree(graphics.memory, 0, MEM_RELEASE);
-	}
-	graphics.memory = VirtualAlloc(0, graphics.size, MEM_COMMIT, PAGE_READWRITE);
-}
-
-static void DisplayPixelBuffer(win32_graphics &graphics, HDC deviceContext)
-{
-	StretchDIBits(
-		deviceContext,
-		0, 0, graphics.width, graphics.height,
-		0, 0, graphics.width, graphics.height,
-		graphics.memory,
-		&graphics.info,
-		DIB_RGB_COLORS,
-		SRCCOPY);
-}
-
 static void Win32Update(Window &window)
 {
 	HDC deviceContext = GetDC(window.handle);
@@ -112,24 +284,7 @@ static void Win32Update(Window &window)
 	ReleaseDC(window.handle, deviceContext);
 }
 
-static void PutPixel(win32_graphics &graphics, int x, int y, Color c)
-{
-	// Pixel 32 bits
-	// Memory:      BB GG RR xx
-	// Register:    xx RR GG BB
-
-	uint32_t *pixel = (uint32_t *)graphics.memory + y * graphics.width + x;
-	bool isInBuffer =
-		y >= 0 &&
-		y < graphics.height &&
-		x >= 0 &&			// left
-		x < graphics.width; // right
-	if (isInBuffer)
-	{
-		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
-	}
-}
-
+// NOTE: DRAWING FUNCTIONS
 static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
 {
 	float dx = b.x - a.x;
@@ -172,179 +327,6 @@ static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
 			PutPixel(graphics, (int)x, (int)y, c);
 		}
 	}
-}
-
-// NOTE: WINDOWS MESSAGE HANDLERS
-LRESULT Window::CreateWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	if (message == WM_CREATE)
-	{
-		// extract pointer to window class from creation data
-		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
-		if (pCreate)
-		{
-			Window *pWindow = (Window *)(pCreate->lpCreateParams);
-			// Set WinAPI-managed user data to store ptr to window class
-			SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR)(pWindow));
-			// Set message proc to normal handler
-			SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)(&Window::ForwardMessageToClassHandler));
-			// forward message to window class handler
-			return pWindow->HandleMessage(window, message, wParam, lParam);
-		}
-	}
-
-	return DefWindowProc(window, message, wParam, lParam);
-	;
-}
-
-LRESULT Window::ForwardMessageToClassHandler(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	Window *pWindow = (Window *)GetWindowLongPtr(window, GWLP_USERDATA);
-	return pWindow->HandleMessage(window, message, wParam, lParam);
-}
-
-LRESULT Window::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	LRESULT result = 0;
-	switch (message)
-	{
-	case WM_PAINT:
-	{
-		PAINTSTRUCT paint;
-		HDC deviceContext = BeginPaint(window, &paint);
-		DisplayPixelBuffer(graphics, deviceContext);
-		EndPaint(window, &paint);
-		break;
-	}
-
-	/***************** KEYBOARD EVENTS ****************/
-	case WM_SYSKEYDOWN:
-	case WM_KEYDOWN:
-	{
-		bool wasDown = ((lParam >> 30) & 1) != 0;
-		if (!wasDown || keyboard.autoRepeatEnabled)
-		{
-			keyboard.Press((VK_CODE)wParam);
-		}
-		if (keyboard.IsPressed(VK_F4) && keyboard.IsPressed(VK_MENU))
-		{
-			PostQuitMessage(0);
-			return 0;
-		}
-		break;
-	}
-	case WM_SYSKEYUP:
-	case WM_KEYUP:
-	{
-		keyboard.Release((VK_CODE)wParam);
-		break;
-	}
-
-	case WM_CHAR:
-	{
-		keyboard.SetChar((unsigned char)wParam);
-		break;
-	}
-	/**************************************************/
-
-	/****************** MOUSE EVENTS ******************/
-	case WM_MOUSEMOVE:
-	{
-		POINTS p = MAKEPOINTS(lParam);
-		bool isInWindow =
-			p.x >= 0 && p.x < dimensions.width &&
-			p.y >= 0 && p.y < dimensions.height;
-		if (isInWindow)
-		{
-			mouse.SetPos(p.x, p.y);
-			if (!mouse.isInWindow) // if it wasn't in the window before
-			{
-				SetCapture(window);
-				mouse.isInWindow = true;
-			}
-		}
-		else
-		{
-			if (mouse.leftIsPressed || mouse.rightIsPressed)
-			{
-				// mouse is of the window but we're holding a button
-				mouse.SetPos(p.x, p.y);
-			}
-			else
-			{
-				// mouse is out of the window
-				ReleaseCapture();
-				mouse.isInWindow = false;
-			}
-		}
-		break;
-	}
-	case WM_LBUTTONDOWN:
-	{
-		mouse.leftIsPressed = true;
-		break;
-	}
-	case WM_RBUTTONDOWN:
-	{
-		mouse.rightIsPressed = true;
-		break;
-	}
-	case WM_LBUTTONUP:
-	{
-		mouse.leftIsPressed = false;
-		break;
-	}
-	case WM_RBUTTONUP:
-	{
-		mouse.rightIsPressed = false;
-		break;
-	}
-	case WM_MOUSEWHEEL:
-	{
-		mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
-		while (mouse.wheelDelta >= WHEEL_DELTA)
-		{
-			mouse.wheelDelta -= WHEEL_DELTA;
-			// wheel up action
-		}
-		while (mouse.wheelDelta <= -WHEEL_DELTA)
-		{
-			mouse.wheelDelta += WHEEL_DELTA;
-			// wheel down action
-		}
-	}
-	case WM_MOUSELEAVE:
-	{
-		POINTS p = MAKEPOINTS(lParam);
-		mouse.SetPos(p.x, p.y);
-		break;
-	}
-		/**************************************************/
-
-	case WM_CLOSE:
-	{
-		PostQuitMessage(0);
-		return 0;
-		break;
-	}
-
-	case WM_KILLFOCUS:
-	{
-		keyboard.Clear();
-		break;
-	}
-
-	case WM_DESTROY:
-	{
-		break;
-	}
-
-	default:
-	{
-		result = DefWindowProc(window, message, wParam, lParam);
-	}
-	}
-	return result;
 }
 
 // TEST:

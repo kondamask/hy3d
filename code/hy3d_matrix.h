@@ -22,8 +22,8 @@ static mat3 Scale(float factor)
 }
 static mat3 RotateZ(float theta)
 {
-    float sinTheta = sin(theta);
-    float cosTheta = cos(theta);
+    float sinTheta = sinf(theta);
+    float cosTheta = cosf(theta);
     return {
         cosTheta, sinTheta, 0.0f,
         -sinTheta, cosTheta, 0.0f,
@@ -31,8 +31,8 @@ static mat3 RotateZ(float theta)
 }
 static mat3 RotateY(float theta)
 {
-    float sinTheta = sin(theta);
-    float cosTheta = cos(theta);
+    float sinTheta = sinf(theta);
+    float cosTheta = cosf(theta);
     return {
         cosTheta, 0.0f, -sinTheta,
         0.0f, 1.0f, 0.0f,
@@ -40,8 +40,8 @@ static mat3 RotateY(float theta)
 }
 static mat3 RotateX(float theta)
 {
-    float sinTheta = sin(theta);
-    float cosTheta = cos(theta);
+    float sinTheta = sinf(theta);
+    float cosTheta = cosf(theta);
     return {
         1.0f, 0.0f, 0.0f,
         0.0f, cosTheta, sinTheta,

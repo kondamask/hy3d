@@ -2,7 +2,7 @@
 
 // TEST:
 static orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-static float cubeScale = 1.0f;
+static float cubeZ = 3.0f;
 
 static void InitializeEngine(hy3d_engine &e)
 {
@@ -30,13 +30,13 @@ static void UpdateFrame(hy3d_engine &e)
 
     float rotSpeed = 1.5f * dt;
     if (e.window.keyboard.IsPressed(VK_UP))
-        cubeOrientation.thetaX -= rotSpeed;
-    if (e.window.keyboard.IsPressed(VK_DOWN))
         cubeOrientation.thetaX += rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_DOWN))
+        cubeOrientation.thetaX -= rotSpeed;
     if (e.window.keyboard.IsPressed(VK_LEFT))
-        cubeOrientation.thetaY -= rotSpeed;
-    if (e.window.keyboard.IsPressed(VK_RIGHT))
         cubeOrientation.thetaY += rotSpeed;
+    if (e.window.keyboard.IsPressed(VK_RIGHT))
+        cubeOrientation.thetaY -= rotSpeed;
     if (e.window.keyboard.IsPressed('Q'))
         cubeOrientation.thetaZ += rotSpeed;
     if (e.window.keyboard.IsPressed('W'))
@@ -49,11 +49,11 @@ static void UpdateFrame(hy3d_engine &e)
         cubeOrientation.thetaZ = 0.0f;
     }
 
-    float dSize = 1.0f * dt;
+    float offsetZ = 1.0f * dt;
     if (e.window.keyboard.IsPressed('Z'))
-        cubeScale -= dSize;
+        cubeZ -= offsetZ;
     if (e.window.keyboard.IsPressed('X'))
-        cubeScale += dSize;
+        cubeZ += offsetZ;
 }
 
 static void ComposeFrame(hy3d_engine &e)
@@ -61,12 +61,11 @@ static void ComposeFrame(hy3d_engine &e)
     cube cube = MakeCube(1.0, cubeOrientation);
     mat3 transformation = RotateX(cubeOrientation.thetaX) *
                           RotateY(cubeOrientation.thetaY) *
-                          RotateZ(cubeOrientation.thetaZ) *
-                          Scale(cubeScale);
+                          RotateZ(cubeOrientation.thetaZ);
     for (int i = 0; i < cube.nVertices; i++)
     {
         cube.vertices[i] *= transformation;
-        cube.vertices[i] += {0.0f, 0.0f, 1.0f};
+        cube.vertices[i] += {0.0f, 0.0f, cubeZ};
         e.screenTransformer.Transform(cube.vertices[i]);
     }
     for (int i = 0; i < 24; i += 2)

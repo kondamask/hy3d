@@ -31,8 +31,9 @@ struct hy3d_screen_transformer
 
     vec3 GetTransformed(vec3 v)
     {
-        v.x = (v.x + 1.0f) * xFactor;
-        v.y = (v.y + 1.0f) * yFactor;
+        float zInv = 1 / v.z;
+        v.x = (v.x * zInv + 1.0f) * xFactor;
+        v.y = (v.y * zInv + 1.0f) * yFactor;
         return v;
     }
 

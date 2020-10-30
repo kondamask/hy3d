@@ -80,4 +80,4 @@ struct Window
 
 static void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle);
 static void Win32Update(Window &window);
-static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c);
+static void PutPixel(win32_graphics &graphics, int x, int y, Color c);

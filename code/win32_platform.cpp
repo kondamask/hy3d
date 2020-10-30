@@ -23,29 +23,16 @@ static void DisplayPixelBuffer(win32_graphics &graphics, HDC deviceContext)
 		SRCCOPY);
 }
 
-static void PutPixel(win32_graphics &graphics, int x, int y, Color c)
-{
-	// Pixel 32 bits
-	// Memory:      BB GG RR xx
-	// Register:    xx RR GG BB
-
-	uint32_t *pixel = (uint32_t *)graphics.memory + y * graphics.width + x;
-	bool isInBuffer =
-		y >= 0 &&
-		y < graphics.height &&
-		x >= 0 &&			// left
-		x < graphics.width; // right
-	if (isInBuffer)
-	{
-		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
-	}
-}
-
 // NOTE: WINDOWS MESSAGE HANDLER
 static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	// NOTE: This pointer doesn't need to be checked for null since it always gets a value
+	// before we need to process ather messages. On application start we get:
+	// 1st message: WM_GETMINMAXINFO 
+	// 2nd message: WM_NCCREATE -> sets window pointer in the windows api
 	Window *window = (Window *)GetWindowLongPtr(handle, GWLP_USERDATA);
-
+	
+	//		 before the other messages. 
 	LRESULT result = 0;
 	switch (message)
 	{
@@ -171,10 +158,12 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 
 	case WM_DESTROY:
 	{
+		UnregisterClassA(window->className, window->instance);
+		DestroyWindow(handle);
 		break;
 	}
 
-	case WM_CREATE:
+	case WM_NCCREATE:
 	{
 		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
 		if (pCreate)
@@ -284,87 +273,20 @@ static void Win32Update(Window &window)
 	ReleaseDC(window.handle, deviceContext);
 }
 
-// NOTE: DRAWING FUNCTIONS
-static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
+static void PutPixel(win32_graphics &graphics, int x, int y, Color c)
 {
-	float dx = b.x - a.x;
-	float dy = b.y - a.y;
-	if (dx == 0.0f && dy == 0.0f)
-	{
-		PutPixel(graphics, (int)a.x, (int)a.y, c);
-	}
-	else if (fabsf(dy) >= fabsf(dx))
-	{
-		if (dy < 0.0f)
-		{
-			vec3 temp = a;
-			a = b;
-			b = temp;
-		}
+	// Pixel 32 bits
+	// Memory:      BB GG RR xx
+	// Register:    xx RR GG BB
 
-		float m = dx / dy;
-		for (float x = a.x, y = a.y;
-			 y < b.y;
-			 y += 1.0f, x += m)
-		{
-			PutPixel(graphics, (int)x, (int)y, c);
-		}
-	}
-	else
+	uint32_t *pixel = (uint32_t *)graphics.memory + y * graphics.width + x;
+	bool isInBuffer =
+		y >= 0 &&
+		y < graphics.height &&
+		x >= 0 &&			// left
+		x < graphics.width; // right
+	if (isInBuffer)
 	{
-		if (dx < 0.0f)
-		{
-			vec3 temp = a;
-			a = b;
-			b = temp;
-		}
-
-		float m = dy / dx;
-		for (float x = a.x, y = a.y;
-			 x < b.x;
-			 x += 1.0f, y += m)
-		{
-			PutPixel(graphics, (int)x, (int)y, c);
-		}
+		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
 	}
 }
-
-// TEST:
-#if 0
-static void DrawBufferBounds()
-{
-    Color c{0, 255, 0};
-    uint32_t *pixel = (uint32_t *)graphics.memory;
-    for (int y = 0; y < graphics.height; y++)
-    {
-        *pixel = (c.r << 16) | (c.g << 8) | (c.b);
-        *(pixel + graphics.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
-        pixel += graphics.width;
-    }
-    pixel = (uint32_t *)graphics.memory + 1;
-    for (int x = 0; x < graphics.width - 1; x++)
-    {
-        *pixel = (c.r << 16) | (c.g << 8) | (c.b);
-        *(pixel + graphics.size / graphics.bytesPerPixel - graphics.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
-        pixel++;
-    }
-}
-
-static void DrawTest(int x_in, int y_in)
-{
-    uint32_t *pixel = (uint32_t *)graphics.memory;
-    int strechX = graphics.width / 255;
-    int strechY = graphics.height / 255;
-    for (int y = 0; y < graphics.height; y++)
-    {
-        for (int x = 0; x < graphics.width; x++)
-        {
-            uint8_t r = (uint8_t)((x + x_in) / strechX);
-            uint8_t g = (uint8_t)(x / strechX);
-            uint8_t b = (uint8_t)((y + y_in) / strechY);
-            Color c = Color{r, g, b};
-            *pixel++ = (c.r << 16) | (c.g << 8) | (c.b);
-        }
-    }
-}
-#endif

@@ -2,7 +2,7 @@
 
 // TEST:
 static orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-static float cubeZ = 3.0f;
+static float cubeZ = 2.0f;
 
 static void InitializeEngine(hy3d_engine &e)
 {
@@ -68,7 +68,23 @@ static void ComposeFrame(hy3d_engine &e)
         cube.vertices[i] += {0.0f, 0.0f, cubeZ};
         e.screenTransformer.Transform(cube.vertices[i]);
     }
-    for (int i = 0; i < 24; i += 2)
+    Color c = {200,200,200};
+    //for (int i = 0; i < cube.nTrianglesVertices; i += 3)
+    for (int i = 0; i < cube.nTrianglesVertices; i += 3)
+    {
+        triangle t{
+            cube.vertices[cube.triangles[i]],
+            cube.vertices[cube.triangles[i + 1]],
+            cube.vertices[cube.triangles[i + 2]],
+        };
+        DrawTriangle(e.window.graphics, t, c);
+        c.r += 25;
+        c.g += 50;
+        c.b += 100;
+    }
+
+    //Draw Lines
+    for (int i = 0; i < cube.nLinesVertices; i += 2)
     {
         vec3 a = cube.vertices[cube.lines[i]];
         vec3 b = cube.vertices[cube.lines[i + 1]];

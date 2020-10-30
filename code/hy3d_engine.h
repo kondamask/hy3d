@@ -2,6 +2,7 @@
 #include "win32_platform.h"
 #include "hy3d_vector.h"
 #include "hy3d_matrix.h"
+#include "hy3d_renderer.h"
 #include "hy3d_objects.h"
 #include <chrono>
 

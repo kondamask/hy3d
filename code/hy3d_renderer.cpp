@@ -107,34 +107,28 @@ static void DrawTriangle(win32_graphics &graphics, triangle t, Color c)
 	int ySplit = (int)ceilf(split.y - 0.5f);
 	int yBottom = (int)ceilf(t.v2.y - 0.5f);
 
+	float xLeftF, xRightF;
+	int xLeft, xRight;
+
+	// NOTE:
+	// It looks like that multiplication with the negative slope and the negative
+	// Dy give more precise results in comparison with the positive slope and Dy.
 	float slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
 	float slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
 	float slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
-
-	float xLeftStartOnFlatBottomTriangle = t.v0.x;
-	float xRightStartOnFlatBottomTriangle = t.v0.x;
-	float xLeftStartOnFlatTopTriangle = t.v0.x;
-	float xRightStartOnFlatTopTriangle = t.v1.x;
-	if (isGenericTriangle && !isLeftSideMajor)
-	{
-		std::swap(xLeftStartOnFlatTopTriangle, xRightStartOnFlatTopTriangle);
-	}
-
-	float xLeftF, xRightF;
-	int xLeft, xRight;
 
 	// Top Half | Flat Bottom Triangle
 	for (int y = yTop; y > ySplit; y--)
 	{
 		if (isLeftSideMajor)
 		{
-			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + xLeftStartOnFlatBottomTriangle;
-			xRightF = slope01 * (t.v0.y - (float)y + 0.5f) + xRightStartOnFlatBottomTriangle;
+			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+			xRightF = slope01 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
 		}
 		else
 		{
-			xLeftF = slope01 * (t.v0.y - (float)y + 0.5f) + xLeftStartOnFlatBottomTriangle;
-			xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + xRightStartOnFlatBottomTriangle;
+			xLeftF = slope01 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+			xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
 		}
 		xLeft = (int)ceilf(xLeftF - 0.5f);
 		xRight = (int)ceilf(xRightF - 0.5f);
@@ -150,13 +144,13 @@ static void DrawTriangle(win32_graphics &graphics, triangle t, Color c)
 	{
 		if (isLeftSideMajor)
 		{
-			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + xLeftStartOnFlatTopTriangle;
-			xRightF = slope12 * (t.v1.y - (float)y + 0.5f) + xRightStartOnFlatTopTriangle;
+			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+			xRightF = slope12 * (t.v1.y - (float)y + 0.5f) + t.v1.x;
 		}
 		else
 		{
-			xLeftF = slope12 * (t.v1.y - (float)y + 0.5f) + xLeftStartOnFlatTopTriangle;
-			xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + xRightStartOnFlatTopTriangle;
+			xLeftF = slope12 * (t.v1.y - (float)y + 0.5f) + t.v1.x;
+			xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
 		}
 		xLeft = (int)ceilf(xLeftF - 0.5f);
 		xRight = (int)ceilf(xRightF - 0.5f);

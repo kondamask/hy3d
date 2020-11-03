@@ -24,6 +24,14 @@ struct cube
         4, 5, 7, 4, 7, 6,
         0, 4, 2, 2, 4, 6,
         0, 1, 4, 1, 5, 4};
+    bool isTriangleVisible[12] = {false}; // triangles vertices / 3. the number of triangles
+    Color colors[6] = {
+        {255, 0, 0},
+        {0, 255, 0},
+        {0, 0, 255},
+        {255, 255, 0},
+        {255, 0, 255},
+        {0, 255, 255}};
 };
 
 static cube MakeCube(float side, orientation o)

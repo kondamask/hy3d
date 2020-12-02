@@ -51,5 +51,3 @@ struct hy3d_engine
     hy3d_screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;
 };
-
-static void Run(hy3d_engine &e);

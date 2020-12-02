@@ -86,19 +86,11 @@ static void DrawTriangle(win32_graphics &graphics, triangle t, Color c)
 	// Sort by x:
 	// if v1.y is the same as v0.y, it should be to the right
 	// if v1.y is the same as v2.y, it should be to the left
-	bool isGenericTriangle = true;
-	if (t.v0.y == t.v1.y)
-	{
-		isGenericTriangle = false;
-		if (t.v0.x > t.v1.x)
-			std::swap(t.v0, t.v1);
-	}
-	else if (t.v1.y == t.v2.y)
-	{
-		isGenericTriangle = false;
-		if (t.v1.x > t.v2.x)
-			std::swap(t.v1, t.v2);
-	}
+	if (t.v0.y == t.v1.y && t.v0.x > t.v1.x)
+		std::swap(t.v0, t.v1);
+	else if (t.v1.y == t.v2.y && t.v1.x > t.v2.x)
+		std::swap(t.v1, t.v2);
+
 	float alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
 	vec3 split = t.v0 + (t.v2 - t.v0) * alphaSplit;
 	bool isLeftSideMajor = t.v1.x > split.x;
@@ -113,13 +105,12 @@ static void DrawTriangle(win32_graphics &graphics, triangle t, Color c)
 	// NOTE:
 	// It looks like that multiplication with the negative slope and the negative
 	// Dy give more precise results in comparison with the positive slope and Dy.
-	float slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
 	float slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
-	float slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
 
 	// Top Half | Flat Bottom Triangle
 	for (int y = yTop; y > ySplit; y--)
 	{
+		float slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
 		if (isLeftSideMajor)
 		{
 			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
@@ -142,6 +133,7 @@ static void DrawTriangle(win32_graphics &graphics, triangle t, Color c)
 	//Bottom Half | Flat Top
 	for (int y = ySplit; y > yBottom; y--)
 	{
+		float slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
 		if (isLeftSideMajor)
 		{
 			xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;

@@ -73,10 +73,6 @@ static void ComposeFrame(hy3d_engine &e)
         cube.vertices[i] += {0.0f, 0.0f, cubeZ};
     }
 
-    // find visible triangles
-    // Problem on normal vectors:
-    // 1 3 5 -> i = 6
-    // 2 4 6 -> i = 27
     for (int i = 0; i < cube.nTrianglesVertices; i += 3)
     {
         triangle t{

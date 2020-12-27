@@ -18,6 +18,11 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "cleanup",
+            "type": "shell",
+            "command": "del /Q build"
         }
     ]
 }

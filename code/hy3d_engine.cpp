@@ -117,9 +117,8 @@ static void ComposeFrame(hy3d_engine &e)
     }
 }
 
-static void Run(hy3d_engine &e)
+static void UpdateAndRender(hy3d_engine &e)
 {
     UpdateFrame(e);
     ComposeFrame(e);
-    Win32Update(e.window);
 }

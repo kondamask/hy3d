@@ -7,11 +7,12 @@
             "request": "launch",
             "program": "${workspaceFolder}\\build\\hy3d.exe",
             "cwd": "${workspaceFolder}\\data",
-            "preLaunchTask": "build",
             "symbolSearchPath": "${workspaceFolder}\\..\\build",
             "logging": {
                 "moduleLoad": false
-            }
+            },
+            "preLaunchTask": "build",
+            "postDebugTask": "cleanup"
         }
     ]
 }

@@ -29,7 +29,8 @@ int CALLBACK WinMain(
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
-		Run(engine);
+		UpdateAndRender(engine);
+		Win32Update(e.window);
 	}
 	return quitMessage;
 }

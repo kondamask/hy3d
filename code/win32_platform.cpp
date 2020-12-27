@@ -1,5 +1,5 @@
 #include "win32_platform.h"
-//#include "resources.h"
+#include "resources.h"
 
 // NOTE: PIXEL BUFFER FUNCTIONS
 static void ClearBackbuffer(win32_graphics &graphics)
@@ -218,7 +218,7 @@ void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle)
 	windowClass.hInstance = window.instance;
 
 	// TODO: FIX THE FUCKING ICON.
-	// windowClass.hIcon = LoadIcon(instance, MAKEINTRESOURCE(HY3D_ICON));
+	windowClass.hIcon = LoadIcon(window.instance, MAKEINTRESOURCE(IDI_ICON));
 
 	if (!RegisterClass(&windowClass))
 	{

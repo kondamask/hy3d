@@ -13,6 +13,10 @@
                 "panel": "shared",
                 "showReuseMessage": true,
                 "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
             }
         }
     ]

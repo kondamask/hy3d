@@ -29,6 +29,7 @@ static void UpdateFrame(hy3d_engine &e)
     float dt = frameTime.count();
     e.frameStart = frameEnd;
 
+    // Cube Control
     float rotSpeed = 1.5f * dt;
     if (e.window.keyboard.IsPressed(VK_UP))
         cubeOrientation.thetaX += rotSpeed;
@@ -58,7 +59,6 @@ static void UpdateFrame(hy3d_engine &e)
 
     drawLines = e.window.keyboard.IsPressed('L');
 }
-
 static void ComposeFrame(hy3d_engine &e)
 {
     cube cube = MakeCube(1.0, cubeOrientation);
@@ -67,6 +67,7 @@ static void ComposeFrame(hy3d_engine &e)
     mat3 transformation = RotateX(cubeOrientation.thetaX) *
                           RotateY(cubeOrientation.thetaY) *
                           RotateZ(cubeOrientation.thetaZ);
+    
     for (int i = 0; i < cube.nVertices; i++)
     {
         cube.vertices[i] *= transformation;

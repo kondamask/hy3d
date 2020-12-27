@@ -1,5 +1,6 @@
 #include "hy3d_renderer.h"
 #include <utility>
+#include <algorithm>
 
 static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
 {
@@ -47,11 +48,11 @@ static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
 
 /*  NOTE:
 	How a triangle might look like:
-	
-	Case 1: 
+
+	Case 1:
 	             v0
 	             *
-		      * * 
+		      * *
 		   *   *
 	    *     *
   v1 *       *
@@ -65,11 +66,11 @@ static void DrawLine(win32_graphics &graphics, vec3 a, vec3 b, Color c)
 	 	 *  *
 		  *    *
 		   *       *
-		    *         *   
+		    *         *
 			 *           * v1
 			  *        *
 			   *     *
-			    *  *  
+			    *  *
 				 * v2
 */
 

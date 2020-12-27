@@ -1,8 +1,6 @@
 #pragma once
-#include "win32_platform.h"
 #include "hy3d_vector.h"
 #include "hy3d_matrix.h"
-#include "hy3d_renderer.h"
 #include "hy3d_objects.h"
 #include <chrono>
 
@@ -26,6 +24,11 @@ struct hy3d_space
     float height;
 };
 
+struct triangle
+{
+    vec3 v0, v1, v2;
+};
+
 struct hy3d_screen_transformer
 {
     float xFactor, yFactor;
@@ -44,6 +47,79 @@ struct hy3d_screen_transformer
     }
 };
 
+struct pixel_buffer
+{
+    void *memory;
+    int width;
+    int height;
+    int bytesPerPixel;
+    int size;
+};
+
+enum KEYBOARD_BUTTON
+{
+    UP,
+    LEFT,
+    DOWN,
+    RIGHT,
+    W,
+    A,
+    S,
+    D,
+    Q,
+    E,
+    R,
+    F,
+    Z,
+    X,
+    C,
+    V,
+    SHIFT,
+    CTRL,
+    ALT,
+    F4,
+    COUNT
+};
+
+struct keyboard
+{
+    bool autoRepeatEnabled = false;
+    bool isPressed[KEYBOARD_BUTTON::COUNT];
+
+    void Clear()
+    {
+        for (int i = 0; i < KEYBOARD_BUTTON::COUNT; i++)
+            isPressed[i] = false;
+    }
+
+    void ToggleKey(KEYBOARD_BUTTON key)
+    {
+        isPressed[key] = !isPressed[key];
+    }
+};
+
+struct mouse
+{
+    int x;
+    int y;
+    bool isInWindow;
+    bool leftIsPressed;
+    bool rightIsPressed;
+    float wheelDelta;
+
+    void SetPos(int x_, int y_)
+    {
+        x = x_;
+        y = y_;
+    }
+};
+
+struct engine_input
+{
+    mouse mouse;
+    keyboard keyboard;
+};
+
 struct engine_state
 {
     // TEST:
@@ -54,8 +130,9 @@ struct engine_state
 
 struct hy3d_engine
 {
-    win32_window window;
+    pixel_buffer pixel_buffer;
     engine_state state;
+    engine_input input;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;

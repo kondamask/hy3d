@@ -1,5 +1,11 @@
 #pragma once
 #include "hy3d_vector.h"
+#include "stdint.h"
+
+struct Color
+{
+	uint8_t r, g, b;
+};
 
 struct orientation
 {

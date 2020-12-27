@@ -24,7 +24,7 @@ int CALLBACK WinMain(
 	int nShowCmd)
 {
 	win32_window window;
-	InitializeWin32Window(window, 512, 512, "HY3D");
+	Win32InitializeWindow(window, 512, 512, "HY3D");
 
 	hy3d_engine engine;
 	InitializeEngine(engine, window);

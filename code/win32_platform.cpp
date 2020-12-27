@@ -2,37 +2,107 @@
 #include "resources.h"
 
 // NOTE: PIXEL BUFFER FUNCTIONS
-static void ClearBackbuffer(win32_graphics &graphics)
+static void Win32ClearBackbuffer(win32_pixel_buffer &pixel_buffer)
 {
-	if (graphics.memory)
+	if (pixel_buffer.memory)
 	{
-		VirtualFree(graphics.memory, 0, MEM_RELEASE);
+		VirtualFree(pixel_buffer.memory, 0, MEM_RELEASE);
 	}
-	graphics.memory = VirtualAlloc(0, graphics.size, MEM_COMMIT, PAGE_READWRITE);
+	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-static void DisplayPixelBuffer(win32_graphics &graphics, HDC deviceContext)
+static void Win32DisplayPixelBuffer(win32_pixel_buffer &pixel_buffer, HDC deviceContext)
 {
 	StretchDIBits(
 		deviceContext,
-		0, 0, graphics.width, graphics.height,
-		0, 0, graphics.width, graphics.height,
-		graphics.memory,
-		&graphics.info,
+		0, 0, pixel_buffer.width, pixel_buffer.height,
+		0, 0, pixel_buffer.width, pixel_buffer.height,
+		pixel_buffer.memory,
+		&pixel_buffer.info,
 		DIB_RGB_COLORS,
 		SRCCOPY);
 }
 
+static KEYBOARD_BUTTON TranslateVKCode(VK_CODE code)
+{
+	switch (code)
+	{
+	case VK_UP:
+		return UP;
+		break;
+	case VK_LEFT:
+		return LEFT;
+		break;
+	case VK_DOWN:
+		return DOWN;
+		break;
+	case VK_RIGHT:
+		return RIGHT;
+		break;
+	case 0x57:
+		return W;
+		break;
+	case 0x41:
+		return A;
+		break;
+	case 0x53:
+		return S;
+		break;
+	case 0x44:
+		return D;
+		break;
+	case 0x51:
+		return Q;
+		break;
+	case 0x45:
+		return E;
+		break;
+	case 0x52:
+		return R;
+		break;
+	case 0x46:
+		return F;
+		break;
+	case 0x5A:
+		return Z;
+		break;
+	case 0x58:
+		return X;
+		break;
+	case 0x43:
+		return C;
+		break;
+	case 0x56:
+		return V;
+		break;
+	case VK_SHIFT:
+		return SHIFT;
+		break;
+	case VK_CONTROL:
+		return CTRL;
+		break;
+	case VK_MENU:
+		return ALT;
+		break;
+	case VK_F4:
+		return F4;
+		break;
+
+	default:
+		break;
+	}
+}
+
 // NOTE: WINDOWS MESSAGE HANDLER
-static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	// NOTE: This pointer doesn't need to be checked for null since it always gets a value
 	// before we need to process ather messages. On application start we get:
-	// 1st message: WM_GETMINMAXINFO 
+	// 1st message: WM_GETMINMAXINFO
 	// 2nd message: WM_NCCREATE -> sets window pointer in the windows api
 	win32_window *window = (win32_window *)GetWindowLongPtr(handle, GWLP_USERDATA);
-	
-	//		 before the other messages. 
+
+	//		 before the other messages.
 	LRESULT result = 0;
 	switch (message)
 	{
@@ -40,7 +110,7 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	{
 		PAINTSTRUCT paint;
 		HDC deviceContext = BeginPaint(handle, &paint);
-		DisplayPixelBuffer(window->graphics, deviceContext);
+		Win32DisplayPixelBuffer(window->pixel_buffer, deviceContext);
 		EndPaint(handle, &paint);
 		break;
 	}
@@ -50,11 +120,13 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	case WM_KEYDOWN:
 	{
 		bool wasDown = ((lParam >> 30) & 1) != 0;
-		if (!wasDown || window->keyboard.autoRepeatEnabled)
+		if (!wasDown || window->input.keyboard.autoRepeatEnabled)
 		{
-			window->keyboard.ToggleKey((VK_CODE)wParam);
+			KEYBOARD_BUTTON key = TranslateVKCode((VK_CODE)wParam);
+			if (key < KEYBOARD_BUTTON::COUNT)
+				window->input.keyboard.ToggleKey(key);
 		}
-		if (window->keyboard.IsPressed(VK_F4) && window->keyboard.IsPressed(VK_MENU))
+		if (window->input.keyboard.isPressed[F4] && window->input.keyboard.isPressed[ALT])
 		{
 			PostQuitMessage(0);
 			return 0;
@@ -64,7 +136,9 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	case WM_SYSKEYUP:
 	case WM_KEYUP:
 	{
-		window->keyboard.ToggleKey((VK_CODE)wParam);
+		KEYBOARD_BUTTON key = TranslateVKCode((VK_CODE)wParam);
+		if (key < KEYBOARD_BUTTON::COUNT)
+			window->input.keyboard.ToggleKey(key);
 		break;
 	}
 	/**************************************************/
@@ -78,67 +152,67 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 			p.y >= 0 && p.y < window->dimensions.height;
 		if (isInWindow)
 		{
-			window->mouse.SetPos(p.x, p.y);
-			if (!window->mouse.isInWindow) // if it wasn't in the window before
+			window->input.mouse.SetPos(p.x, p.y);
+			if (!window->input.mouse.isInWindow) // if it wasn't in the window before
 			{
 				SetCapture(handle);
-				window->mouse.isInWindow = true;
+				window->input.mouse.isInWindow = true;
 			}
 		}
 		else
 		{
-			if (window->mouse.leftIsPressed || window->mouse.rightIsPressed)
+			if (window->input.mouse.leftIsPressed || window->input.mouse.rightIsPressed)
 			{
 				// mouse is of the window but we're holding a button
-				window->mouse.SetPos(p.x, p.y);
+				window->input.mouse.SetPos(p.x, p.y);
 			}
 			else
 			{
 				// mouse is out of the window
 				ReleaseCapture();
-				window->mouse.isInWindow = false;
+				window->input.mouse.isInWindow = false;
 			}
 		}
 		break;
 	}
 	case WM_LBUTTONDOWN:
 	{
-		window->mouse.leftIsPressed = true;
+		window->input.mouse.leftIsPressed = true;
 		break;
 	}
 	case WM_RBUTTONDOWN:
 	{
-		window->mouse.rightIsPressed = true;
+		window->input.mouse.rightIsPressed = true;
 		break;
 	}
 	case WM_LBUTTONUP:
 	{
-		window->mouse.leftIsPressed = false;
+		window->input.mouse.leftIsPressed = false;
 		break;
 	}
 	case WM_RBUTTONUP:
 	{
-		window->mouse.rightIsPressed = false;
+		window->input.mouse.rightIsPressed = false;
 		break;
 	}
 	case WM_MOUSEWHEEL:
 	{
-		window->mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
-		while (window->mouse.wheelDelta >= WHEEL_DELTA)
+		window->input.mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+		while (window->input.mouse.wheelDelta >= WHEEL_DELTA)
 		{
-			window->mouse.wheelDelta -= WHEEL_DELTA;
+			window->input.mouse.wheelDelta -= WHEEL_DELTA;
 			// wheel up action
 		}
-		while (window->mouse.wheelDelta <= -WHEEL_DELTA)
+		while (window->input.mouse.wheelDelta <= -WHEEL_DELTA)
 		{
-			window->mouse.wheelDelta += WHEEL_DELTA;
+			window->input.mouse.wheelDelta += WHEEL_DELTA;
 			// wheel down action
 		}
 	}
 	case WM_MOUSELEAVE:
 	{
 		POINTS p = MAKEPOINTS(lParam);
-		window->mouse.SetPos(p.x, p.y);
+		window->input.mouse.SetPos(p.x, p.y);
 		break;
 	}
 		/**************************************************/
@@ -152,7 +226,7 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 
 	case WM_KILLFOCUS:
 	{
-		window->keyboard.Clear();
+		window->input.keyboard.Clear();
 		break;
 	}
 
@@ -183,37 +257,37 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 }
 
 // NOTE: INIITALIZERS
-static void InitializeBackbuffer(win32_graphics &graphics, int width, int height)
+static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, int width, int height)
 {
-	if (graphics.memory)
+	if (pixel_buffer.memory)
 	{
-		VirtualFree(graphics.memory, 0, MEM_RELEASE);
+		VirtualFree(pixel_buffer.memory, 0, MEM_RELEASE);
 	}
 
-	graphics.width = width;
-	graphics.height = height;
-	graphics.bytesPerPixel = 4;
+	pixel_buffer.width = width;
+	pixel_buffer.height = height;
+	pixel_buffer.bytesPerPixel = 4;
 
-	graphics.info = {};
-	graphics.info.bmiHeader.biSize = sizeof(graphics.info.bmiHeader);
-	graphics.info.bmiHeader.biWidth = width;
-	graphics.info.bmiHeader.biHeight = height; // bottom up y. "-height" fot top down y
-	graphics.info.bmiHeader.biPlanes = 1;
-	graphics.info.bmiHeader.biBitCount = 32;
-	graphics.info.bmiHeader.biCompression = BI_RGB;
+	pixel_buffer.info = {};
+	pixel_buffer.info.bmiHeader.biSize = sizeof(pixel_buffer.info.bmiHeader);
+	pixel_buffer.info.bmiHeader.biWidth = width;
+	pixel_buffer.info.bmiHeader.biHeight = height; // bottom up y. "-height" fot top down y
+	pixel_buffer.info.bmiHeader.biPlanes = 1;
+	pixel_buffer.info.bmiHeader.biBitCount = 32;
+	pixel_buffer.info.bmiHeader.biCompression = BI_RGB;
 
-	graphics.size = graphics.width * graphics.height * graphics.bytesPerPixel;
-	graphics.memory = VirtualAlloc(0, graphics.size, MEM_COMMIT, PAGE_READWRITE);
+	pixel_buffer.size = pixel_buffer.width * pixel_buffer.height * pixel_buffer.bytesPerPixel;
+	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-void InitializeWin32Window(win32_window &window, int width, int height, LPCSTR windowTitle)
+void Win32InitializeWindow(win32_window &window, int width, int height, LPCSTR windowTitle)
 {
 	window.instance = GetModuleHandle(nullptr);
 
 	// Set window class properties
 	WNDCLASS windowClass = {};
 	windowClass.style = CS_HREDRAW | CS_VREDRAW;
-	windowClass.lpfnWndProc = MainWindowProc;
+	windowClass.lpfnWndProc = Win32MainWindowProc;
 	windowClass.lpszClassName = window.className;
 	windowClass.hInstance = window.instance;
 
@@ -226,7 +300,7 @@ void InitializeWin32Window(win32_window &window, int width, int height, LPCSTR w
 		return;
 	}
 
-	InitializeBackbuffer(window.graphics, width, height);
+	Win32InitializeBackbuffer(window.pixel_buffer, width, height);
 
 	window.dimensions.width = width;
 	window.dimensions.height = height;
@@ -262,31 +336,60 @@ void InitializeWin32Window(win32_window &window, int width, int height, LPCSTR w
 	// the WM_CREATE message. This message is sent to the
 	// created window by this function before it returns.
 
+	window.input = {};
+
 	ShowWindow(window.handle, SW_SHOWDEFAULT);
 }
 
 static void Win32Update(win32_window &window)
 {
 	HDC deviceContext = GetDC(window.handle);
-	DisplayPixelBuffer(window.graphics, deviceContext);
-	ClearBackbuffer(window.graphics);
+	Win32DisplayPixelBuffer(window.pixel_buffer, deviceContext);
+	Win32ClearBackbuffer(window.pixel_buffer);
 	ReleaseDC(window.handle, deviceContext);
 }
 
-static void PutPixel(win32_graphics &graphics, int x, int y, Color c)
+static bool ProcessMessages(int &quitMessage)
 {
-	// Pixel 32 bits
-	// Memory:      BB GG RR xx
-	// Register:    xx RR GG BB
-
-	uint32_t *pixel = (uint32_t *)graphics.memory + y * graphics.width + x;
-	bool isInBuffer =
-		y >= 0 &&
-		y < graphics.height &&
-		x >= 0 &&			// left
-		x < graphics.width; // right
-	if (isInBuffer)
+	MSG message;
+	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 	{
-		*pixel = (c.r << 16) | (c.g << 8) | (c.b);
+		quitMessage = (int)message.wParam;
+		if (message.message == WM_QUIT)
+		{
+			return false;
+		}
+		TranslateMessage(&message);
+		DispatchMessage(&message);
 	}
+	return true;
+}
+
+int CALLBACK WinMain(
+	HINSTANCE instance,
+	HINSTANCE prevInstance,
+	LPSTR lpCmdLine,
+	int nShowCmd)
+{
+	win32_window window;
+	Win32InitializeWindow(window, 512, 512, "HY3D");
+
+	hy3d_engine engine;
+	InitializeEngine(engine, window.pixel_buffer.memory, window.pixel_buffer.width, window.pixel_buffer.height, window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+
+	int quitMessage = -1;
+	while (ProcessMessages(quitMessage))
+	{
+		window.pixel_buffer.memory = engine.pixel_buffer.memory;
+		window.pixel_buffer.width = engine.pixel_buffer.width;
+		window.pixel_buffer.height = engine.pixel_buffer.height;
+		window.pixel_buffer.bytesPerPixel = engine.pixel_buffer.bytesPerPixel;
+		window.pixel_buffer.size = engine.pixel_buffer.size;
+
+		engine.input = window.input;
+
+		UpdateAndRender(engine);
+		Win32Update(window);
+	}
+	return quitMessage;
 }

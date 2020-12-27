@@ -1,6 +1,3 @@
-//#include <utility>
-//#include <algorithm>
-
 #include "hy3d_engine.h"
 
 static void PutPixel(pixel_buffer &pixel_buffer, int x, int y, Color c)

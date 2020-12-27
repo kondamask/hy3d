@@ -44,9 +44,18 @@ struct hy3d_screen_transformer
     }
 };
 
+struct engine_state
+{
+    // TEST:
+    orientation cubeOrientation{0.0f, 0.0f, 0.0f};
+    float cubeZ = 2.0f;
+    bool drawLines = true;
+};
+
 struct hy3d_engine
 {
     win32_window window;
+    engine_state state;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;

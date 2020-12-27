@@ -1,10 +1,5 @@
 #include "hy3d_engine.h"
 
-// TEST:
-static orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-static float cubeZ = 2.0f;
-bool drawLines = true;
-
 static void InitializeEngine(hy3d_engine &e, win32_window window)
 {
     e.window = window;
@@ -32,46 +27,46 @@ static void UpdateFrame(hy3d_engine &e)
     // Cube Control
     float rotSpeed = 1.5f * dt;
     if (e.window.keyboard.IsPressed(VK_UP))
-        cubeOrientation.thetaX += rotSpeed;
+        e.state.cubeOrientation.thetaX += rotSpeed;
     if (e.window.keyboard.IsPressed(VK_DOWN))
-        cubeOrientation.thetaX -= rotSpeed;
+        e.state.cubeOrientation.thetaX -= rotSpeed;
     if (e.window.keyboard.IsPressed(VK_LEFT))
-        cubeOrientation.thetaY += rotSpeed;
+        e.state.cubeOrientation.thetaY += rotSpeed;
     if (e.window.keyboard.IsPressed(VK_RIGHT))
-        cubeOrientation.thetaY -= rotSpeed;
+        e.state.cubeOrientation.thetaY -= rotSpeed;
     if (e.window.keyboard.IsPressed('Q'))
-        cubeOrientation.thetaZ += rotSpeed;
+        e.state.cubeOrientation.thetaZ += rotSpeed;
     if (e.window.keyboard.IsPressed('W'))
-        cubeOrientation.thetaZ -= rotSpeed;
+        e.state.cubeOrientation.thetaZ -= rotSpeed;
 
     if (e.window.keyboard.IsPressed('R'))
     {
-        cubeOrientation.thetaX = 0.0f;
-        cubeOrientation.thetaY = 0.0f;
-        cubeOrientation.thetaZ = 0.0f;
+        e.state.cubeOrientation.thetaX = 0.0f;
+        e.state.cubeOrientation.thetaY = 0.0f;
+        e.state.cubeOrientation.thetaZ = 0.0f;
     }
 
     float offsetZ = 1.0f * dt;
     if (e.window.keyboard.IsPressed('Z'))
-        cubeZ -= offsetZ;
+        e.state.cubeZ -= offsetZ;
     if (e.window.keyboard.IsPressed('X'))
-        cubeZ += offsetZ;
+        e.state.cubeZ += offsetZ;
 
-    drawLines = e.window.keyboard.IsPressed('L');
+    e.state.drawLines = e.window.keyboard.IsPressed('L');
 }
 static void ComposeFrame(hy3d_engine &e)
 {
-    cube cube = MakeCube(1.0, cubeOrientation);
+    cube cube = MakeCube(1.0, e.state.cubeOrientation);
 
     // Apply Transformations
-    mat3 transformation = RotateX(cubeOrientation.thetaX) *
-                          RotateY(cubeOrientation.thetaY) *
-                          RotateZ(cubeOrientation.thetaZ);
+    mat3 transformation = RotateX(e.state.cubeOrientation.thetaX) *
+                          RotateY(e.state.cubeOrientation.thetaY) *
+                          RotateZ(e.state.cubeOrientation.thetaZ);
     
     for (int i = 0; i < cube.nVertices; i++)
     {
         cube.vertices[i] *= transformation;
-        cube.vertices[i] += {0.0f, 0.0f, cubeZ};
+        cube.vertices[i] += {0.0f, 0.0f, e.state.cubeZ};
     }
 
     for (int i = 0; i < cube.nTrianglesVertices; i += 3)
@@ -106,7 +101,7 @@ static void ComposeFrame(hy3d_engine &e)
     }
 
     //Draw Lines
-    if (drawLines)
+    if (e.state.drawLines)
     {
         for (int i = 0; i < cube.nLinesVertices; i += 2)
         {

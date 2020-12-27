@@ -23,14 +23,17 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine,
 	int nShowCmd)
 {
+	win32_window window;
+	InitializeWin32Window(window, 512, 512, "HY3D");
+
 	hy3d_engine engine;
-	InitializeEngine(engine);
+	InitializeEngine(engine, window);
 	
 	int quitMessage = -1;
 	while (ProcessMessages(quitMessage))
 	{
 		UpdateAndRender(engine);
-		Win32Update(e.window);
+		Win32Update(engine.window);
 	}
 	return quitMessage;
 }

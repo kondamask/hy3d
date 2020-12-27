@@ -5,9 +5,9 @@ static orientation cubeOrientation{0.0f, 0.0f, 0.0f};
 static float cubeZ = 2.0f;
 bool drawLines = true;
 
-static void InitializeEngine(hy3d_engine &e)
+static void InitializeEngine(hy3d_engine &e, win32_window window)
 {
-    InitializeWindow(e.window, 512, 512, "HY3D");
+    e.window = window;
 
     e.space.left = -1.0f;
     e.space.right = 1.0f;

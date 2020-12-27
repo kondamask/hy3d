@@ -46,7 +46,7 @@ struct hy3d_screen_transformer
 
 struct hy3d_engine
 {
-    Window window;
+    win32_window window;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;

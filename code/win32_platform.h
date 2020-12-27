@@ -67,7 +67,7 @@ struct win32_graphics
 	int size;
 };
 
-struct Window
+struct win32_window
 {
 	win32_graphics graphics;
 	Keyboard keyboard;
@@ -78,6 +78,6 @@ struct Window
 	LPCSTR className = "HY3D_WINDOW_CLASS";
 };
 
-static void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle);
-static void Win32Update(Window &window);
+static void InitializeWin32Window(win32_window &window, int width, int height, LPCSTR windowTitle);
+static void Win32Update(win32_window &window);
 static void PutPixel(win32_graphics &graphics, int x, int y, Color c);

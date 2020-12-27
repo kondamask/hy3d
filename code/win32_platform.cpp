@@ -30,7 +30,7 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 	// before we need to process ather messages. On application start we get:
 	// 1st message: WM_GETMINMAXINFO 
 	// 2nd message: WM_NCCREATE -> sets window pointer in the windows api
-	Window *window = (Window *)GetWindowLongPtr(handle, GWLP_USERDATA);
+	win32_window *window = (win32_window *)GetWindowLongPtr(handle, GWLP_USERDATA);
 	
 	//		 before the other messages. 
 	LRESULT result = 0;
@@ -168,7 +168,7 @@ static LRESULT MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM l
 		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
 		if (pCreate)
 		{
-			Window *pWindow = (Window *)(pCreate->lpCreateParams);
+			win32_window *pWindow = (win32_window *)(pCreate->lpCreateParams);
 			// Set WinAPI-managed user data to store ptr to window class
 			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
 		}
@@ -206,7 +206,7 @@ static void InitializeBackbuffer(win32_graphics &graphics, int width, int height
 	graphics.memory = VirtualAlloc(0, graphics.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
-void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle)
+void InitializeWin32Window(win32_window &window, int width, int height, LPCSTR windowTitle)
 {
 	window.instance = GetModuleHandle(nullptr);
 
@@ -265,7 +265,7 @@ void InitializeWindow(Window &window, int width, int height, LPCSTR windowTitle)
 	ShowWindow(window.handle, SW_SHOWDEFAULT);
 }
 
-static void Win32Update(Window &window)
+static void Win32Update(win32_window &window)
 {
 	HDC deviceContext = GetDC(window.handle);
 	DisplayPixelBuffer(window.graphics, deviceContext);

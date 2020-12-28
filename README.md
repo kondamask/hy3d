@@ -8,4 +8,4 @@
     2. run .\misc\build 
 
 ## Latest Preview:
-![Alt Text](previews/0_271220.gif "Preview gif")
+![Alt Text](previews/1_291220.gif "Preview gif")

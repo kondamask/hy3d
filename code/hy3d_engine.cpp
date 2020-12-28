@@ -274,7 +274,7 @@ static void UpdateFrame(hy3d_engine &e)
 
 static void ComposeFrame(hy3d_engine &e)
 {
-    axis3d cube_axis = MakeAxis3D(0.5f, e.state.cubeOrientation);
+    axis3d cube_axis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, e.state.cubeOrientation);
     cube cube = MakeCube(1.0f, e.state.cubeOrientation);
 
     // Apply Transformations

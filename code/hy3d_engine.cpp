@@ -244,9 +244,9 @@ static void UpdateFrame(hy3d_engine &e)
     // Cube Control
     float rotSpeed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
-        e.state.cubeOrientation.thetaX += rotSpeed;
-    if (e.input.keyboard.isPressed[DOWN])
         e.state.cubeOrientation.thetaX -= rotSpeed;
+    if (e.input.keyboard.isPressed[DOWN])
+        e.state.cubeOrientation.thetaX += rotSpeed;
     if (e.input.keyboard.isPressed[LEFT])
         e.state.cubeOrientation.thetaY += rotSpeed;
     if (e.input.keyboard.isPressed[RIGHT])
@@ -271,15 +271,21 @@ static void UpdateFrame(hy3d_engine &e)
 
     e.state.drawLines = e.input.keyboard.isPressed[CTRL];
 }
+
 static void ComposeFrame(hy3d_engine &e)
 {
-    cube cube = MakeCube(1.0, e.state.cubeOrientation);
+    axis3d cube_axis = MakeAxis3D(0.5f, e.state.cubeOrientation);
+    cube cube = MakeCube(1.0f, e.state.cubeOrientation);
 
     // Apply Transformations
     mat3 transformation = RotateX(e.state.cubeOrientation.thetaX) *
                           RotateY(e.state.cubeOrientation.thetaY) *
                           RotateZ(e.state.cubeOrientation.thetaZ);
-
+    for (int i = 0; i < cube_axis.nVertices; i++)
+    {
+        cube_axis.vertices[i] *= transformation;
+        cube_axis.vertices[i] += {0.0f, 0.0f, e.state.cubeZ};
+    }
     for (int i = 0; i < cube.nVertices; i++)
     {
         cube.vertices[i] *= transformation;
@@ -298,12 +304,16 @@ static void ComposeFrame(hy3d_engine &e)
     }
 
     // Transform to sceen
+    for (int i = 0; i < cube_axis.nVertices; i++)
+    {
+        e.screenTransformer.Transform(cube_axis.vertices[i]);
+    }
     for (int i = 0; i < cube.nVertices; i++)
     {
         e.screenTransformer.Transform(cube.vertices[i]);
     }
 
-    // Draw Triangles
+    //Draw Triangles
     for (int i = 0; i < cube.nTrianglesVertices; i += 3)
     {
         if (cube.isTriangleVisible[i / 3])
@@ -326,6 +336,13 @@ static void ComposeFrame(hy3d_engine &e)
             vec3 b = cube.vertices[cube.lines[i + 1]];
             DrawLine(e.pixel_buffer, a, b, {255, 255, 255});
         }
+    }
+
+    for (int i = 0; i < cube_axis.nLinesVertices; i += 2)
+    {
+        vec3 a = cube_axis.vertices[cube_axis.lines[i]];
+        vec3 b = cube_axis.vertices[cube_axis.lines[i + 1]];
+        DrawLine(e.pixel_buffer, a, b, {150, 150, 150});
     }
 }
 

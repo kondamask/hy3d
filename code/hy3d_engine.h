@@ -136,5 +136,6 @@ struct hy3d_engine
     engine_input input;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
+    axis3d world_axis;
     std::chrono::steady_clock::time_point frameStart;
 };

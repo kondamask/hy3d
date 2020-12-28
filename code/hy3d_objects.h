@@ -4,7 +4,7 @@
 
 struct Color
 {
-	uint8_t r, g, b;
+    uint8_t r, g, b;
 };
 
 struct orientation
@@ -14,7 +14,7 @@ struct orientation
 
 struct cube
 {
-    float thetaX, thetaY, thetaZ;
+    orientation orientation;
     int nVertices = 8;
     int nLinesVertices = 24;
     int nTrianglesVertices = 36;
@@ -52,8 +52,33 @@ static cube MakeCube(float side, orientation o)
     result.vertices[5] = {side, -side, side};
     result.vertices[6] = {-side, side, side};
     result.vertices[7] = {side, side, side};
-    result.thetaX = o.thetaX;
-    result.thetaY = o.thetaY;
-    result.thetaZ = o.thetaZ;
+    result.orientation.thetaX = o.thetaX;
+    result.orientation.thetaY = o.thetaY;
+    result.orientation.thetaZ = o.thetaZ;
+    return result;
+}
+
+struct axis3d
+{
+    int nVertices = 4;
+    vec3 vertices[4];
+    int nLinesVertices = 6;
+    int lines[6] = {
+        0, 1,
+        0, 2,
+        0, 3};
+    orientation orientation;
+};
+
+static axis3d MakeAxis3D(float length, orientation o)
+{
+    axis3d result;
+    result.vertices[0] = {0.0f, 0.0f, 0.0f};
+    result.vertices[1] = {length, 0.0f, 0.0f};
+    result.vertices[2] = {0.0f, length, 0.0f};
+    result.vertices[3] = {0.0f, 0.0f, length};
+    result.orientation.thetaX = o.thetaX;
+    result.orientation.thetaY = o.thetaY;
+    result.orientation.thetaZ = o.thetaZ;
     return result;
 }

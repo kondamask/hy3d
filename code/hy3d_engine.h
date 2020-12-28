@@ -78,7 +78,8 @@ enum KEYBOARD_BUTTON
     CTRL,
     ALT,
     F4,
-    COUNT
+    COUNT,
+    INVALID
 };
 
 struct keyboard

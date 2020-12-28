@@ -1,7 +1,30 @@
 #include "win32_platform.h"
 #include "resources.h"
+#include <assert.h>
 
-// NOTE: PIXEL BUFFER FUNCTIONS
+static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, int width, int height)
+{
+	if (pixel_buffer.memory)
+	{
+		VirtualFree(pixel_buffer.memory, 0, MEM_RELEASE);
+	}
+
+	pixel_buffer.width = width;
+	pixel_buffer.height = height;
+	pixel_buffer.bytesPerPixel = 4;
+
+	pixel_buffer.info = {};
+	pixel_buffer.info.bmiHeader.biSize = sizeof(pixel_buffer.info.bmiHeader);
+	pixel_buffer.info.bmiHeader.biWidth = width;
+	pixel_buffer.info.bmiHeader.biHeight = height; // bottom up y. "-height" fot top down y
+	pixel_buffer.info.bmiHeader.biPlanes = 1;
+	pixel_buffer.info.bmiHeader.biBitCount = 32;
+	pixel_buffer.info.bmiHeader.biCompression = BI_RGB;
+
+	pixel_buffer.size = pixel_buffer.width * pixel_buffer.height * pixel_buffer.bytesPerPixel;
+	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
+}
+
 static void Win32ClearBackbuffer(win32_pixel_buffer &pixel_buffer)
 {
 	if (pixel_buffer.memory)
@@ -23,7 +46,142 @@ static void Win32DisplayPixelBuffer(win32_pixel_buffer &pixel_buffer, HDC device
 		SRCCOPY);
 }
 
-static KEYBOARD_BUTTON TranslateVKCode(VK_CODE code)
+static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	// NOTE: This pointer doesn't need to be checked for null since it always gets a value
+	// before we need to process ather messages. On application start we get:
+	// 1st message: WM_GETMINMAXINFO
+	// 2nd message: WM_NCCREATE -> sets window pointer in the windows api
+	win32_window *window = (win32_window *)GetWindowLongPtr(handle, GWLP_USERDATA);
+
+	//		 before the other messages.
+	LRESULT result = 0;
+	switch (message)
+	{
+	case WM_PAINT:
+	{
+		PAINTSTRUCT paint;
+		HDC deviceContext = BeginPaint(handle, &paint);
+		Win32DisplayPixelBuffer(window->pixel_buffer, deviceContext);
+		EndPaint(handle, &paint);
+		break;
+	}
+
+	case WM_CLOSE:
+	{
+		PostQuitMessage(0);
+		return 0;
+		break;
+	}
+
+	case WM_DESTROY:
+	{
+		UnregisterClassA(window->className, window->instance);
+		DestroyWindow(handle);
+		break;
+	}
+
+	case WM_NCCREATE:
+	{
+		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
+		if (pCreate)
+		{
+			win32_window *pWindow = (win32_window *)(pCreate->lpCreateParams);
+			// Set WinAPI-managed user data to store ptr to window class
+			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
+		}
+	}
+
+	// 	NOTE: KEYBOARD AND MOUSE EVENTS SHOULD NOT COME HERE!
+	case WM_SYSKEYDOWN:
+	case WM_KEYDOWN:
+	case WM_SYSKEYUP:
+	case WM_KEYUP:
+	case WM_LBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_RBUTTONUP:
+	case WM_MOUSEWHEEL:
+	case WM_MOUSELEAVE:
+	case WM_KILLFOCUS:
+	{
+		assert("We got an input message from somewhere else and we did not handle it properly");
+	}
+
+	default:
+		result = DefWindowProc(handle, message, wParam, lParam);
+	}
+	return result;
+}
+
+static void Win32InitializeWindow(win32_window &window, int width, int height, LPCSTR windowTitle)
+{
+	window.instance = GetModuleHandle(nullptr);
+
+	// Set window class properties
+	WNDCLASS windowClass = {};
+	windowClass.style = CS_HREDRAW | CS_VREDRAW;
+	windowClass.lpfnWndProc = Win32MainWindowProc;
+	windowClass.lpszClassName = window.className;
+	windowClass.hInstance = window.instance;
+
+	// TODO: FIX THE FUCKING ICON.
+	windowClass.hIcon = LoadIcon(window.instance, MAKEINTRESOURCE(IDI_ICON));
+
+	if (!RegisterClass(&windowClass))
+	{
+		OutputDebugString("Window class wasn't registered.\n");
+		return;
+	}
+
+	Win32InitializeBackbuffer(window.pixel_buffer, width, height);
+
+	window.dimensions.width = width;
+	window.dimensions.height = height;
+	// Declare the window client size
+	RECT rect = {0};
+	rect.left = 100;
+	rect.top = 100;
+	rect.right = rect.left + window.dimensions.width;
+	rect.bottom = rect.top + window.dimensions.height;
+
+	// Adjuct the window size according to the style we
+	// have for out window, while keeping the client size
+	// the same.
+	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
+	window.dimensions.width = rect.right - rect.left;
+	window.dimensions.height = rect.bottom - rect.top;
+
+	// Create the window
+	window.handle = CreateWindow(
+		window.className,
+		windowTitle,
+		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+		CW_USEDEFAULT, CW_USEDEFAULT, // X, Y
+		window.dimensions.width,
+		window.dimensions.height,
+		nullptr, nullptr,
+		window.instance,
+		&window // * See note bellow
+	);
+
+	// NOTE: A value to be passed to the window through the
+	// CREATESTRUCT structure pointed to by the lParam of
+	// the WM_CREATE message. This message is sent to the
+	// created window by this function before it returns.
+
+	ShowWindow(window.handle, SW_SHOWDEFAULT);
+}
+
+static void Win32Update(win32_window &window)
+{
+	HDC deviceContext = GetDC(window.handle);
+	Win32DisplayPixelBuffer(window.pixel_buffer, deviceContext);
+	Win32ClearBackbuffer(window.pixel_buffer);
+	ReleaseDC(window.handle, deviceContext);
+}
+
+static KEYBOARD_BUTTON Win32TranslateKeyInput(VK_CODE code)
 {
 	switch (code)
 	{
@@ -89,278 +247,122 @@ static KEYBOARD_BUTTON TranslateVKCode(VK_CODE code)
 		break;
 
 	default:
+		return INVALID;
 		break;
 	}
 }
 
-// NOTE: WINDOWS MESSAGE HANDLER
-static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	// NOTE: This pointer doesn't need to be checked for null since it always gets a value
-	// before we need to process ather messages. On application start we get:
-	// 1st message: WM_GETMINMAXINFO
-	// 2nd message: WM_NCCREATE -> sets window pointer in the windows api
-	win32_window *window = (win32_window *)GetWindowLongPtr(handle, GWLP_USERDATA);
-
-	//		 before the other messages.
-	LRESULT result = 0;
-	switch (message)
-	{
-	case WM_PAINT:
-	{
-		PAINTSTRUCT paint;
-		HDC deviceContext = BeginPaint(handle, &paint);
-		Win32DisplayPixelBuffer(window->pixel_buffer, deviceContext);
-		EndPaint(handle, &paint);
-		break;
-	}
-
-	/***************** KEYBOARD EVENTS ****************/
-	case WM_SYSKEYDOWN:
-	case WM_KEYDOWN:
-	{
-		bool wasDown = ((lParam >> 30) & 1) != 0;
-		if (!wasDown || window->input.keyboard.autoRepeatEnabled)
-		{
-			KEYBOARD_BUTTON key = TranslateVKCode((VK_CODE)wParam);
-			if (key < KEYBOARD_BUTTON::COUNT)
-				window->input.keyboard.ToggleKey(key);
-		}
-		if (window->input.keyboard.isPressed[F4] && window->input.keyboard.isPressed[ALT])
-		{
-			PostQuitMessage(0);
-			return 0;
-		}
-		break;
-	}
-	case WM_SYSKEYUP:
-	case WM_KEYUP:
-	{
-		KEYBOARD_BUTTON key = TranslateVKCode((VK_CODE)wParam);
-		if (key < KEYBOARD_BUTTON::COUNT)
-			window->input.keyboard.ToggleKey(key);
-		break;
-	}
-	/**************************************************/
-
-	/****************** MOUSE EVENTS ******************/
-	case WM_MOUSEMOVE:
-	{
-		POINTS p = MAKEPOINTS(lParam);
-		bool isInWindow =
-			p.x >= 0 && p.x < window->dimensions.width &&
-			p.y >= 0 && p.y < window->dimensions.height;
-		if (isInWindow)
-		{
-			window->input.mouse.SetPos(p.x, p.y);
-			if (!window->input.mouse.isInWindow) // if it wasn't in the window before
-			{
-				SetCapture(handle);
-				window->input.mouse.isInWindow = true;
-			}
-		}
-		else
-		{
-			if (window->input.mouse.leftIsPressed || window->input.mouse.rightIsPressed)
-			{
-				// mouse is of the window but we're holding a button
-				window->input.mouse.SetPos(p.x, p.y);
-			}
-			else
-			{
-				// mouse is out of the window
-				ReleaseCapture();
-				window->input.mouse.isInWindow = false;
-			}
-		}
-		break;
-	}
-	case WM_LBUTTONDOWN:
-	{
-		window->input.mouse.leftIsPressed = true;
-		break;
-	}
-	case WM_RBUTTONDOWN:
-	{
-		window->input.mouse.rightIsPressed = true;
-		break;
-	}
-	case WM_LBUTTONUP:
-	{
-		window->input.mouse.leftIsPressed = false;
-		break;
-	}
-	case WM_RBUTTONUP:
-	{
-		window->input.mouse.rightIsPressed = false;
-		break;
-	}
-	case WM_MOUSEWHEEL:
-	{
-		window->input.mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
-		while (window->input.mouse.wheelDelta >= WHEEL_DELTA)
-		{
-			window->input.mouse.wheelDelta -= WHEEL_DELTA;
-			// wheel up action
-		}
-		while (window->input.mouse.wheelDelta <= -WHEEL_DELTA)
-		{
-			window->input.mouse.wheelDelta += WHEEL_DELTA;
-			// wheel down action
-		}
-	}
-	case WM_MOUSELEAVE:
-	{
-		POINTS p = MAKEPOINTS(lParam);
-		window->input.mouse.SetPos(p.x, p.y);
-		break;
-	}
-		/**************************************************/
-
-	case WM_CLOSE:
-	{
-		PostQuitMessage(0);
-		return 0;
-		break;
-	}
-
-	case WM_KILLFOCUS:
-	{
-		window->input.keyboard.Clear();
-		break;
-	}
-
-	case WM_DESTROY:
-	{
-		UnregisterClassA(window->className, window->instance);
-		DestroyWindow(handle);
-		break;
-	}
-
-	case WM_NCCREATE:
-	{
-		CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
-		if (pCreate)
-		{
-			win32_window *pWindow = (win32_window *)(pCreate->lpCreateParams);
-			// Set WinAPI-managed user data to store ptr to window class
-			SetWindowLongPtr(handle, GWLP_USERDATA, (LONG_PTR)(pWindow));
-		}
-	}
-
-	default:
-	{
-		result = DefWindowProc(handle, message, wParam, lParam);
-	}
-	}
-	return result;
-}
-
-// NOTE: INIITALIZERS
-static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, int width, int height)
-{
-	if (pixel_buffer.memory)
-	{
-		VirtualFree(pixel_buffer.memory, 0, MEM_RELEASE);
-	}
-
-	pixel_buffer.width = width;
-	pixel_buffer.height = height;
-	pixel_buffer.bytesPerPixel = 4;
-
-	pixel_buffer.info = {};
-	pixel_buffer.info.bmiHeader.biSize = sizeof(pixel_buffer.info.bmiHeader);
-	pixel_buffer.info.bmiHeader.biWidth = width;
-	pixel_buffer.info.bmiHeader.biHeight = height; // bottom up y. "-height" fot top down y
-	pixel_buffer.info.bmiHeader.biPlanes = 1;
-	pixel_buffer.info.bmiHeader.biBitCount = 32;
-	pixel_buffer.info.bmiHeader.biCompression = BI_RGB;
-
-	pixel_buffer.size = pixel_buffer.width * pixel_buffer.height * pixel_buffer.bytesPerPixel;
-	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
-}
-
-void Win32InitializeWindow(win32_window &window, int width, int height, LPCSTR windowTitle)
-{
-	window.instance = GetModuleHandle(nullptr);
-
-	// Set window class properties
-	WNDCLASS windowClass = {};
-	windowClass.style = CS_HREDRAW | CS_VREDRAW;
-	windowClass.lpfnWndProc = Win32MainWindowProc;
-	windowClass.lpszClassName = window.className;
-	windowClass.hInstance = window.instance;
-
-	// TODO: FIX THE FUCKING ICON.
-	windowClass.hIcon = LoadIcon(window.instance, MAKEINTRESOURCE(IDI_ICON));
-
-	if (!RegisterClass(&windowClass))
-	{
-		OutputDebugString("Window class wasn't registered.\n");
-		return;
-	}
-
-	Win32InitializeBackbuffer(window.pixel_buffer, width, height);
-
-	window.dimensions.width = width;
-	window.dimensions.height = height;
-	// Declare the window client size
-	RECT rect = {0};
-	rect.left = 100;
-	rect.top = 100;
-	rect.right = rect.left + window.dimensions.width;
-	rect.bottom = rect.top + window.dimensions.height;
-
-	// Adjuct the window size according to the style we
-	// have for out window, while keeping the client size
-	// the same.
-	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
-	window.dimensions.width = rect.right - rect.left;
-	window.dimensions.height = rect.bottom - rect.top;
-
-	// Create the window
-	window.handle = CreateWindow(
-		window.className,
-		windowTitle,
-		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-		CW_USEDEFAULT, CW_USEDEFAULT, // X, Y
-		window.dimensions.width,
-		window.dimensions.height,
-		nullptr, nullptr,
-		window.instance,
-		&window // * See note bellow
-	);
-
-	// NOTE: A value to be passed to the window through the
-	// CREATESTRUCT structure pointed to by the lParam of
-	// the WM_CREATE message. This message is sent to the
-	// created window by this function before it returns.
-
-	window.input = {};
-
-	ShowWindow(window.handle, SW_SHOWDEFAULT);
-}
-
-static void Win32Update(win32_window &window)
-{
-	HDC deviceContext = GetDC(window.handle);
-	Win32DisplayPixelBuffer(window.pixel_buffer, deviceContext);
-	Win32ClearBackbuffer(window.pixel_buffer);
-	ReleaseDC(window.handle, deviceContext);
-}
-
-static bool ProcessMessages(int &quitMessage)
+static bool Win32ProcessMessages(win32_window &window, engine_input &input, int &quitMessage)
 {
 	MSG message;
 	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 	{
 		quitMessage = (int)message.wParam;
-		if (message.message == WM_QUIT)
+
+		switch (message.message)
 		{
+		case WM_QUIT:
 			return false;
+			break;
+
+		/***************** KEYBOARD EVENTS ****************/
+		case WM_SYSKEYDOWN:
+		case WM_KEYDOWN:
+		{
+			bool wasDown = ((message.lParam >> 30) & 1) != 0;
+			if (!wasDown || input.keyboard.autoRepeatEnabled)
+			{
+				KEYBOARD_BUTTON key = Win32TranslateKeyInput((VK_CODE)message.wParam);
+				if (key < KEYBOARD_BUTTON::COUNT)
+					input.keyboard.ToggleKey(key);
+			}
+			if (input.keyboard.isPressed[F4] && input.keyboard.isPressed[ALT])
+			{
+				PostQuitMessage(0);
+				return 0;
+			}
+			break;
 		}
-		TranslateMessage(&message);
-		DispatchMessage(&message);
+		case WM_SYSKEYUP:
+		case WM_KEYUP:
+		{
+			KEYBOARD_BUTTON key = Win32TranslateKeyInput((VK_CODE)message.wParam);
+			if (key < KEYBOARD_BUTTON::COUNT)
+				input.keyboard.ToggleKey(key);
+			break;
+		}
+		/**************************************************/
+
+		/****************** MOUSE EVENTS ******************/
+		case WM_MOUSEMOVE:
+		{
+			POINTS p = MAKEPOINTS(message.lParam);
+			bool isInWindow =
+				p.x >= 0 && p.x < window.dimensions.width &&
+				p.y >= 0 && p.y < window.dimensions.height;
+			if (isInWindow)
+			{
+				input.mouse.SetPos(p.x, p.y);
+				if (!input.mouse.isInWindow) // if it wasn't in the window before
+				{
+					SetCapture(window.handle);
+					input.mouse.isInWindow = true;
+				}
+			}
+			else
+			{
+				if (input.mouse.leftIsPressed || input.mouse.rightIsPressed)
+				{
+					// mouse is of the window but we're holding a button
+					input.mouse.SetPos(p.x, p.y);
+				}
+				else
+				{
+					// mouse is out of the window
+					ReleaseCapture();
+					input.mouse.isInWindow = false;
+				}
+			}
+			break;
+		}
+		case WM_LBUTTONDOWN:
+			input.mouse.leftIsPressed = true;
+			break;
+		case WM_RBUTTONDOWN:
+			input.mouse.rightIsPressed = true;
+			break;
+		case WM_LBUTTONUP:
+			input.mouse.leftIsPressed = false;
+			break;
+		case WM_RBUTTONUP:
+			input.mouse.rightIsPressed = false;
+			break;
+		case WM_MOUSEWHEEL:
+			input.mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(message.wParam);
+			while (input.mouse.wheelDelta >= WHEEL_DELTA)
+			{
+				// wheel up action
+				input.mouse.wheelDelta -= WHEEL_DELTA;
+			}
+			while (input.mouse.wheelDelta <= -WHEEL_DELTA)
+			{
+				// wheel down action
+				input.mouse.wheelDelta += WHEEL_DELTA;
+			}
+		case WM_MOUSELEAVE:
+			POINTS p = MAKEPOINTS(message.lParam);
+			input.mouse.SetPos(p.x, p.y);
+			break;
+		case WM_KILLFOCUS:
+		{
+			input.keyboard.Clear();
+		}
+
+		default:
+			TranslateMessage(&message);
+			DispatchMessage(&message);
+			break;
+		}
 	}
 	return true;
 }
@@ -378,16 +380,8 @@ int CALLBACK WinMain(
 	InitializeEngine(engine, window.pixel_buffer.memory, window.pixel_buffer.width, window.pixel_buffer.height, window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
 
 	int quitMessage = -1;
-	while (ProcessMessages(quitMessage))
+	while (Win32ProcessMessages(window, engine.input, quitMessage))
 	{
-		window.pixel_buffer.memory = engine.pixel_buffer.memory;
-		window.pixel_buffer.width = engine.pixel_buffer.width;
-		window.pixel_buffer.height = engine.pixel_buffer.height;
-		window.pixel_buffer.bytesPerPixel = engine.pixel_buffer.bytesPerPixel;
-		window.pixel_buffer.size = engine.pixel_buffer.size;
-
-		engine.input = window.input;
-
 		UpdateAndRender(engine);
 		Win32Update(window);
 	}

@@ -27,5 +27,4 @@ struct win32_window
 	HWND handle;
 	win32_window_dimensions dimensions;
 	LPCSTR className = "HY3D_WINDOW_CLASS";
-	engine_input input;
 };

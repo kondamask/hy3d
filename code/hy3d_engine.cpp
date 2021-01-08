@@ -210,7 +210,7 @@ static void DrawTest(int x_in, int y_in)
 }
 #endif
 
-static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size)
+void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size)
 {
     e.pixel_buffer = {};
     e.pixel_buffer.memory = pixel_buffer_memory;
@@ -346,7 +346,7 @@ static void ComposeFrame(hy3d_engine &e)
     }
 }
 
-static void UpdateAndRender(hy3d_engine &e)
+void UpdateAndRender(hy3d_engine &e)
 {
     UpdateFrame(e);
     ComposeFrame(e);

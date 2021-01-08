@@ -119,18 +119,18 @@ static void Win32InitializeWindow(win32_window &window, int width, int height, L
 	window.instance = GetModuleHandle(nullptr);
 
 	// Set window class properties
-	WNDCLASS windowClass = {};
+	WNDCLASSA windowClass = {};
 	windowClass.style = CS_HREDRAW | CS_VREDRAW;
 	windowClass.lpfnWndProc = Win32MainWindowProc;
 	windowClass.lpszClassName = window.className;
 	windowClass.hInstance = window.instance;
 
 	// TODO: FIX THE FUCKING ICON.
-	windowClass.hIcon = LoadIcon(window.instance, MAKEINTRESOURCE(IDI_ICON));
+	windowClass.hIcon = LoadIconA(window.instance, MAKEINTRESOURCEA(IDI_ICON));
 
-	if (!RegisterClass(&windowClass))
+	if (!RegisterClassA(&windowClass))
 	{
-		OutputDebugString("Window class wasn't registered.\n");
+		OutputDebugStringA("Window class wasn't registered.\n");
 		return;
 	}
 
@@ -153,7 +153,7 @@ static void Win32InitializeWindow(win32_window &window, int width, int height, L
 	window.dimensions.height = rect.bottom - rect.top;
 
 	// Create the window
-	window.handle = CreateWindow(
+	window.handle = CreateWindowA(
 		window.className,
 		windowTitle,
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,

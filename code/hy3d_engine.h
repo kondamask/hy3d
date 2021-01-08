@@ -84,6 +84,8 @@ enum KEYBOARD_BUTTON
 
 struct keyboard
 {
+    // TODO: USE A SINGLE VARIABLE INSTEAD OF A BOOL ARRAY
+    // WE ONLY NEED 1 BIT FOR A KEY
     bool autoRepeatEnabled = false;
     bool isPressed[KEYBOARD_BUTTON::COUNT];
 
@@ -139,3 +141,6 @@ struct hy3d_engine
     axis3d world_axis;
     std::chrono::steady_clock::time_point frameStart;
 };
+
+static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size);
+static void UpdateAndRender(hy3d_engine &e);

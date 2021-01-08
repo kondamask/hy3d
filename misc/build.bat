@@ -5,7 +5,7 @@ set LINKER_FLAGS=-link -subsystem:windows -incremental:no -opt:ref user32.lib gd
 
 if not exist .\\data mkdir .\\data
 if not exist .\\build mkdir .\\build
-
 pushd .\\build
+
 cl  %COMPILER_FLAGS% .\\..\\code\\hy3d.cpp %LINKER_FLAGS%
 popd

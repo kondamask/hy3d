@@ -367,6 +367,48 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, int 
 	return true;
 }
 
+static void Win32FreeFileMemory(void *memory)
+{
+	if (memory)
+	{
+		VirtualFree(memory, 0, MEM_RELEASE);
+	}
+}
+
+static void *Win32ReadFile(char *filename)
+{
+	void *result = 0;
+	HANDLE fileHandle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if (fileHandle != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER fileSize;
+		if (GetFileSizeEx(fileHandle, &fileSize))
+		{
+			// Truncate 64 bit value to 32 bit because VirtualAlloc only takes 32bit value
+			assert(fileSize.QuadPart <= 0xFFFFFFFF);
+			uint32_t fileSize32 = (uint32_t)fileSize.QuadPart;
+
+			result = VirtualAlloc(0, fileSize32, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			DWORD bytesRead;
+			if (result)
+			{
+				if (ReadFile(fileHandle, result, fileSize32, &bytesRead, 0) && 
+					fileSize32 == bytesRead)
+				{
+					// We read the file successfully
+				}
+				else
+				{
+					Win32FreeFileMemory(result);
+				}
+			}
+		}
+		CloseHandle(fileHandle);
+	}
+	// NOTE: We can add logging in case these steps fail.
+	return result;
+}
+
 int CALLBACK WinMain(
 	HINSTANCE instance,
 	HINSTANCE prevInstance,
@@ -378,6 +420,9 @@ int CALLBACK WinMain(
 
 	hy3d_engine engine;
 	InitializeEngine(engine, window.pixel_buffer.memory, window.pixel_buffer.width, window.pixel_buffer.height, window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+
+	char *filename = __FILE__;
+	Win32ReadFile(filename);
 
 	int quitMessage = -1;
 	while (Win32ProcessMessages(window, engine.input, quitMessage))

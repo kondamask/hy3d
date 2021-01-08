@@ -210,6 +210,22 @@ static void DrawTest(int x_in, int y_in)
 }
 #endif
 
+/*
+static uint32_t* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *FileName)
+{
+    uint32 *Result = 0;
+    
+    debug_read_file_result ReadResult = ReadEntireFile(Thread, FileName);    
+    if(ReadResult.ContentsSize != 0)
+    {
+        bitmap_header *Header = (bitmap_header *)ReadResult.Contents;
+        uint32 *Pixels = (uint32 *)((uint8 *)ReadResult.Contents + Header->BitmapOffset);
+        Result = Pixels;
+    }
+
+    return(Result);
+}*/
+
 void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size)
 {
     e.pixel_buffer = {};

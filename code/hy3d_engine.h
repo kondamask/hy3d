@@ -29,6 +29,22 @@ struct triangle
     vec3 v0, v1, v2;
 };
 
+#pragma pack(push, 1)
+struct bitmap_header
+{
+    uint16_t FileType;
+    uint32_t FileSize;
+    uint16_t Reserved1;
+    uint16_t Reserved2;
+    uint32_t BitmapOffset;
+    uint32_t Size;
+    int32_t Width;
+    int32_t Height;
+    uint16_t Planes;
+    uint16_t BitsPerPixel;
+};
+#pragma pack(pop)
+
 struct hy3d_screen_transformer
 {
     float xFactor, yFactor;

@@ -1,29 +1,29 @@
 #pragma once
 #include "hy3d_vector.h"
-#include "stdint.h"
+#include "hy3d_types.h"
 
 struct Color
 {
-    uint8_t r, g, b;
+    u8 r, g, b;
 };
 
 struct orientation
 {
-    float thetaX, thetaY, thetaZ;
+    r32 thetaX, thetaY, thetaZ;
 };
 
 struct cube
 {
     orientation orientation;
-    int nVertices = 8;
-    int nLinesVertices = 24;
-    int nTrianglesVertices = 36;
+    i8 nVertices = 8;
+    i8 nLinesVertices = 24;
+    i8 nTrianglesVertices = 36;
     vec3 vertices[8];
-    int lines[24] = {
+    i8 lines[24] = {
         0, 1, 1, 3, 3, 2, 2, 0,
         0, 4, 1, 5, 3, 7, 2, 6,
         4, 5, 5, 7, 7, 6, 6, 4};
-    int triangles[36] = {
+    i8 triangles[36] = {
         0, 2, 1, 2, 3, 1,
         1, 3, 5, 3, 7, 5,
         2, 6, 3, 3, 6, 7,
@@ -40,7 +40,7 @@ struct cube
         {0, 255, 255}};
 };
 
-static cube MakeCube(float side, orientation o)
+static cube MakeCube(r32 side, orientation o)
 {
     cube result;
     side /= 2.0f;
@@ -60,17 +60,17 @@ static cube MakeCube(float side, orientation o)
 
 struct axis3d
 {
-    int nVertices = 4;
+    i8 nVertices = 4;
     vec3 vertices[4];
-    int nLinesVertices = 6;
-    int lines[6] = {
+    i8 nLinesVertices = 6;
+    i8 lines[6] = {
         0, 1,
         0, 2,
         0, 3};
     orientation orientation;
 };
 
-static axis3d MakeAxis3D(vec3 center, float length, orientation o)
+static axis3d MakeAxis3D(vec3 center, r32 length, orientation o)
 {
     axis3d result;
     result.vertices[0] = center;

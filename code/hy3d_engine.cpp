@@ -1,12 +1,12 @@
 #include "hy3d_engine.h"
 
-static void PutPixel(pixel_buffer &pixel_buffer, int x, int y, Color c)
+static void PutPixel(pixel_buffer &pixel_buffer, i16 x, i16 y, Color c)
 {
     // Pixel 32 bits
     // Memory:      BB GG RR xx
     // Register:    xx RR GG BB
 
-    uint32_t *pixel = (uint32_t *)pixel_buffer.memory + y * pixel_buffer.width + x;
+    u32 *pixel = (u32 *)pixel_buffer.memory + y * pixel_buffer.width + x;
     bool isInBuffer =
         y >= 0 &&
         y < pixel_buffer.height &&
@@ -20,11 +20,11 @@ static void PutPixel(pixel_buffer &pixel_buffer, int x, int y, Color c)
 
 static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
 {
-    float dx = b.x - a.x;
-    float dy = b.y - a.y;
+    r32 dx = b.x - a.x;
+    r32 dy = b.y - a.y;
     if (dx == 0.0f && dy == 0.0f)
     {
-        PutPixel(pixel_buffer, (int)a.x, (int)a.y, c);
+        PutPixel(pixel_buffer, (i16)a.x, (i16)a.y, c);
     }
     else if (fabsf(dy) >= fabsf(dx))
     {
@@ -35,12 +35,12 @@ static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
             b = temp;
         }
 
-        float m = dx / dy;
-        for (float x = a.x, y = a.y;
+        r32 m = dx / dy;
+        for (r32 x = a.x, y = a.y;
              y < b.y;
              y += 1.0f, x += m)
         {
-            PutPixel(pixel_buffer, (int)x, (int)y, c);
+            PutPixel(pixel_buffer, (i16)x, (i16)y, c);
         }
     }
     else
@@ -52,12 +52,12 @@ static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
             b = temp;
         }
 
-        float m = dy / dx;
-        for (float x = a.x, y = a.y;
+        r32 m = dy / dx;
+        for (r32 x = a.x, y = a.y;
              x < b.x;
              x += 1.0f, y += m)
         {
-            PutPixel(pixel_buffer, (int)x, (int)y, c);
+            PutPixel(pixel_buffer, (i16)x, (i16)y, c);
         }
     }
 }
@@ -108,62 +108,62 @@ static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
     else if (t.v1.y == t.v2.y && t.v1.x > t.v2.x)
         std::swap(t.v1, t.v2);
 
-    float alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
+    r32 alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
     vec3 split = t.v0 + (t.v2 - t.v0) * alphaSplit;
     bool isLeftSideMajor = t.v1.x > split.x;
 
-    int yTop = (int)ceilf(t.v0.y - 0.5f);
-    int ySplit = (int)ceilf(split.y - 0.5f);
-    int yBottom = (int)ceilf(t.v2.y - 0.5f);
+    i16 yTop = (i16)ceilf(t.v0.y - 0.5f);
+    i16 ySplit = (i16)ceilf(split.y - 0.5f);
+    i16 yBottom = (i16)ceilf(t.v2.y - 0.5f);
 
-    float xLeftF, xRightF;
-    int xLeft, xRight;
+    r32 xLeftF, xRightF;
+    i16 xLeft, xRight;
 
     // NOTE:
     // It looks like that multiplication with the negative slope and the negative
     // Dy give more precise results in comparison with the positive slope and Dy.
-    float slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
+    r32 slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
 
     // Top Half | Flat Bottom Triangle
-    for (int y = yTop; y > ySplit; y--)
+    for (i16 y = yTop; y > ySplit; y--)
     {
-        float slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
+        r32 slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
         if (isLeftSideMajor)
         {
-            xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
-            xRightF = slope01 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+            xLeftF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xRightF = slope01 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
         }
         else
         {
-            xLeftF = slope01 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
-            xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+            xLeftF = slope01 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xRightF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
         }
-        xLeft = (int)ceilf(xLeftF - 0.5f);
-        xRight = (int)ceilf(xRightF - 0.5f);
+        xLeft = (i16)ceilf(xLeftF - 0.5f);
+        xRight = (i16)ceilf(xRightF - 0.5f);
 
-        for (int x = xLeft; x < xRight; x++)
+        for (i16 x = xLeft; x < xRight; x++)
         {
             PutPixel(pixel_buffer, x, y, c);
         }
     }
 
     //Bottom Half | Flat Top
-    for (int y = ySplit; y > yBottom; y--)
+    for (i16 y = ySplit; y > yBottom; y--)
     {
-        float slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
+        r32 slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
         if (isLeftSideMajor)
         {
-            xLeftF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
-            xRightF = slope12 * (t.v1.y - (float)y + 0.5f) + t.v1.x;
+            xLeftF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xRightF = slope12 * (t.v1.y - (r32)y + 0.5f) + t.v1.x;
         }
         else
         {
-            xLeftF = slope12 * (t.v1.y - (float)y + 0.5f) + t.v1.x;
-            xRightF = slope02 * (t.v0.y - (float)y + 0.5f) + t.v0.x;
+            xLeftF = slope12 * (t.v1.y - (r32)y + 0.5f) + t.v1.x;
+            xRightF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
         }
-        xLeft = (int)ceilf(xLeftF - 0.5f);
-        xRight = (int)ceilf(xRightF - 0.5f);
-        for (int x = xLeft; x < xRight; x++)
+        xLeft = (i16)ceilf(xLeftF - 0.5f);
+        xRight = (i16)ceilf(xRightF - 0.5f);
+        for (i16 x = xLeft; x < xRight; x++)
         {
             PutPixel(pixel_buffer, x, y, c);
         }
@@ -175,14 +175,14 @@ static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
 static void DrawBufferBounds()
 {
     Color c{0, 255, 0};
-    uint32_t *pixel = (uint32_t *)pixel_buffer.memory;
+    u32 *pixel = (u32 *)pixel_buffer.memory;
     for (int y = 0; y < pixel_buffer.height; y++)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
         *(pixel + pixel_buffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
         pixel += pixel_buffer.width;
     }
-    pixel = (uint32_t *)pixel_buffer.memory + 1;
+    pixel = (u32 *)pixel_buffer.memory + 1;
     for (int x = 0; x < pixel_buffer.width - 1; x++)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
@@ -193,7 +193,7 @@ static void DrawBufferBounds()
 
 static void DrawTest(int x_in, int y_in)
 {
-    uint32_t *pixel = (uint32_t *)pixel_buffer.memory;
+    u32 *pixel = (u32 *)pixel_buffer.memory;
     int strechX = pixel_buffer.width / 255;
     int strechY = pixel_buffer.height / 255;
     for (int y = 0; y < pixel_buffer.height; y++)
@@ -211,7 +211,7 @@ static void DrawTest(int x_in, int y_in)
 #endif
 
 /*
-static uint32_t* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *FileName)
+static u32* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *FileName)
 {
     uint32 *Result = 0;
     
@@ -226,7 +226,7 @@ static uint32_t* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, cha
     return(Result);
 }*/
 
-void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size)
+void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
 {
     e.pixel_buffer = {};
     e.pixel_buffer.memory = pixel_buffer_memory;
@@ -253,16 +253,16 @@ void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int 
 static void UpdateFrame(hy3d_engine &e)
 {
     std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
-    std::chrono::duration<float> frameTime = frameEnd - e.frameStart;
-    float dt = frameTime.count();
+    std::chrono::duration<r32> frameTime = frameEnd - e.frameStart;
+    r32 dt = frameTime.count();
     e.frameStart = frameEnd;
 
     // Cube Control
-    float rotSpeed = 1.5f * dt;
+    r32 rotSpeed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
-        e.state.cubeOrientation.thetaX -= rotSpeed;
-    if (e.input.keyboard.isPressed[DOWN])
         e.state.cubeOrientation.thetaX += rotSpeed;
+    if (e.input.keyboard.isPressed[DOWN])
+        e.state.cubeOrientation.thetaX -= rotSpeed;
     if (e.input.keyboard.isPressed[LEFT])
         e.state.cubeOrientation.thetaY += rotSpeed;
     if (e.input.keyboard.isPressed[RIGHT])
@@ -279,7 +279,7 @@ static void UpdateFrame(hy3d_engine &e)
         e.state.cubeOrientation.thetaZ = 0.0f;
     }
 
-    float offsetZ = 1.0f * dt;
+    r32 offsetZ = 1.0f * dt;
     if (e.input.keyboard.isPressed[Z])
         e.state.cubeZ -= offsetZ;
     if (e.input.keyboard.isPressed[X])

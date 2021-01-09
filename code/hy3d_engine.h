@@ -2,6 +2,7 @@
 #include "hy3d_vector.h"
 #include "hy3d_matrix.h"
 #include "hy3d_objects.h"
+#include "hy3d_types.h"
 #include <chrono>
 
 // NOTE:
@@ -16,12 +17,12 @@
 // TODO: add Z later
 struct hy3d_space
 {
-    float left;
-    float right;
-    float top;
-    float bottom;
-    float width;
-    float height;
+    r32 left;
+    r32 right;
+    r32 top;
+    r32 bottom;
+    r32 width;
+    r32 height;
 };
 
 struct triangle
@@ -32,26 +33,26 @@ struct triangle
 #pragma pack(push, 1)
 struct bitmap_header
 {
-    uint16_t FileType;
-    uint32_t FileSize;
-    uint16_t Reserved1;
-    uint16_t Reserved2;
-    uint32_t BitmapOffset;
-    uint32_t Size;
-    int32_t Width;
-    int32_t Height;
-    uint16_t Planes;
-    uint16_t BitsPerPixel;
+    u16 FileType;
+    u16 FileSize;
+    u16 Reserved1;
+    u16 Reserved2;
+    u32 BitmapOffset;
+    u32 Size;
+    i32 Width;
+    i32 Height;
+    u16 Planes;
+    u16 BitsPerPixel;
 };
 #pragma pack(pop)
 
 struct hy3d_screen_transformer
 {
-    float xFactor, yFactor;
+    r32 xFactor, yFactor;
 
     vec3 GetTransformed(vec3 v)
     {
-        float zInv = 1 / v.z;
+        r32 zInv = 1 / v.z;
         v.x = (v.x * zInv + 1.0f) * xFactor;
         v.y = (v.y * zInv + 1.0f) * yFactor;
         return v;
@@ -66,10 +67,10 @@ struct hy3d_screen_transformer
 struct pixel_buffer
 {
     void *memory;
-    int width;
-    int height;
-    int bytesPerPixel;
-    int size;
+    i16 width;
+    i16 height;
+    i8 bytesPerPixel;
+    i32 size;
 };
 
 enum KEYBOARD_BUTTON
@@ -119,14 +120,14 @@ struct keyboard
 
 struct mouse
 {
-    int x;
-    int y;
+    i16 x;
+    i16 y;
     bool isInWindow;
     bool leftIsPressed;
     bool rightIsPressed;
-    float wheelDelta;
+    r32 wheelDelta;
 
-    void SetPos(int x_, int y_)
+    void SetPos(i16 x_, i16 y_)
     {
         x = x_;
         y = y_;
@@ -143,7 +144,7 @@ struct engine_state
 {
     // TEST:
     orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-    float cubeZ = 2.0f;
+    r32 cubeZ = 2.0f;
     bool drawLines = true;
 };
 
@@ -158,5 +159,5 @@ struct hy3d_engine
     std::chrono::steady_clock::time_point frameStart;
 };
 
-static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, int width, int height, int bytesPerPixel, int buffer_size);
+static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size);
 static void UpdateAndRender(hy3d_engine &e);

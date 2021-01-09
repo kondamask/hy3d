@@ -2,7 +2,7 @@
 #include "resources.h"
 #include <assert.h>
 
-static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, int width, int height)
+static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i16 width, i16 height)
 {
 	if (pixel_buffer.memory)
 	{
@@ -114,7 +114,7 @@ static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPA
 	return result;
 }
 
-static void Win32InitializeWindow(win32_window &window, int width, int height, LPCSTR windowTitle)
+static void Win32InitializeWindow(win32_window &window, i16 width, i16 height, LPCSTR windowTitle)
 {
 	window.instance = GetModuleHandle(nullptr);
 
@@ -149,8 +149,8 @@ static void Win32InitializeWindow(win32_window &window, int width, int height, L
 	// have for out window, while keeping the client size
 	// the same.
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
-	window.dimensions.width = rect.right - rect.left;
-	window.dimensions.height = rect.bottom - rect.top;
+	window.dimensions.width = (i16)(rect.right - rect.left);
+	window.dimensions.height = (i16)(rect.bottom - rect.top);
 
 	// Create the window
 	window.handle = CreateWindowA(
@@ -252,12 +252,12 @@ static KEYBOARD_BUTTON Win32TranslateKeyInput(VK_CODE code)
 	}
 }
 
-static bool Win32ProcessMessages(win32_window &window, engine_input &input, int &quitMessage)
+static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 &quitMessage)
 {
 	MSG message;
 	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 	{
-		quitMessage = (int)message.wParam;
+		quitMessage = (i32)message.wParam;
 
 		switch (message.message)
 		{
@@ -424,7 +424,7 @@ int CALLBACK WinMain(
 	char *filename = __FILE__;
 	Win32ReadFile(filename);
 
-	int quitMessage = -1;
+	i32 quitMessage = -1;
 	while (Win32ProcessMessages(window, engine.input, quitMessage))
 	{
 		UpdateAndRender(engine);

@@ -1,23 +1,22 @@
 #pragma once
 #include "hy3d_windows.h"
 #include "hy3d_engine.h"
-#include "stdint.h"
 
 #define VK_CODE unsigned char
 
 struct win32_window_dimensions
 {
-	int width, height;
+	i16 width, height;
 };
 
 struct win32_pixel_buffer
 {
 	BITMAPINFO info;
 	void *memory;
-	int width;
-	int height;
-	int bytesPerPixel;
-	int size;
+	i16 width;
+	i16 height;
+	i8 bytesPerPixel;
+	i32 size;
 };
 
 struct win32_window

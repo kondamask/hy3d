@@ -20,8 +20,8 @@ static void PutPixel(pixel_buffer &pixel_buffer, i16 x, i16 y, Color c)
 
 static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
 {
-    r32 dx = b.x - a.x;
-    r32 dy = b.y - a.y;
+    f32 dx = b.x - a.x;
+    f32 dy = b.y - a.y;
     if (dx == 0.0f && dy == 0.0f)
     {
         PutPixel(pixel_buffer, (i16)a.x, (i16)a.y, c);
@@ -35,8 +35,8 @@ static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
             b = temp;
         }
 
-        r32 m = dx / dy;
-        for (r32 x = a.x, y = a.y;
+        f32 m = dx / dy;
+        for (f32 x = a.x, y = a.y;
              y < b.y;
              y += 1.0f, x += m)
         {
@@ -52,8 +52,8 @@ static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
             b = temp;
         }
 
-        r32 m = dy / dx;
-        for (r32 x = a.x, y = a.y;
+        f32 m = dy / dx;
+        for (f32 x = a.x, y = a.y;
              x < b.x;
              x += 1.0f, y += m)
         {
@@ -108,7 +108,7 @@ static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
     else if (t.v1.y == t.v2.y && t.v1.x > t.v2.x)
         std::swap(t.v1, t.v2);
 
-    r32 alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
+    f32 alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
     vec3 split = t.v0 + (t.v2 - t.v0) * alphaSplit;
     bool isLeftSideMajor = t.v1.x > split.x;
 
@@ -116,27 +116,27 @@ static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
     i16 ySplit = (i16)ceilf(split.y - 0.5f);
     i16 yBottom = (i16)ceilf(t.v2.y - 0.5f);
 
-    r32 xLeftF, xRightF;
+    f32 xLeftF, xRightF;
     i16 xLeft, xRight;
 
     // NOTE:
     // It looks like that multiplication with the negative slope and the negative
     // Dy give more precise results in comparison with the positive slope and Dy.
-    r32 slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
+    f32 slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
 
     // Top Half | Flat Bottom Triangle
     for (i16 y = yTop; y > ySplit; y--)
     {
-        r32 slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
+        f32 slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
         if (isLeftSideMajor)
         {
-            xLeftF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
-            xRightF = slope01 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xLeftF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
+            xRightF = slope01 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
         }
         else
         {
-            xLeftF = slope01 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
-            xRightF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xLeftF = slope01 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
+            xRightF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
         }
         xLeft = (i16)ceilf(xLeftF - 0.5f);
         xRight = (i16)ceilf(xRightF - 0.5f);
@@ -150,16 +150,16 @@ static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
     //Bottom Half | Flat Top
     for (i16 y = ySplit; y > yBottom; y--)
     {
-        r32 slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
+        f32 slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
         if (isLeftSideMajor)
         {
-            xLeftF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
-            xRightF = slope12 * (t.v1.y - (r32)y + 0.5f) + t.v1.x;
+            xLeftF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
+            xRightF = slope12 * (t.v1.y - (f32)y + 0.5f) + t.v1.x;
         }
         else
         {
-            xLeftF = slope12 * (t.v1.y - (r32)y + 0.5f) + t.v1.x;
-            xRightF = slope02 * (t.v0.y - (r32)y + 0.5f) + t.v0.x;
+            xLeftF = slope12 * (t.v1.y - (f32)y + 0.5f) + t.v1.x;
+            xRightF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
         }
         xLeft = (i16)ceilf(xLeftF - 0.5f);
         xRight = (i16)ceilf(xRightF - 0.5f);
@@ -253,12 +253,12 @@ void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 
 static void UpdateFrame(hy3d_engine &e)
 {
     std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
-    std::chrono::duration<r32> frameTime = frameEnd - e.frameStart;
-    r32 dt = frameTime.count();
+    std::chrono::duration<f32> frameTime = frameEnd - e.frameStart;
+    f32 dt = frameTime.count();
     e.frameStart = frameEnd;
 
     // Cube Control
-    r32 rotSpeed = 1.5f * dt;
+    f32 rotSpeed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
         e.state.cubeOrientation.thetaX += rotSpeed;
     if (e.input.keyboard.isPressed[DOWN])
@@ -279,7 +279,7 @@ static void UpdateFrame(hy3d_engine &e)
         e.state.cubeOrientation.thetaZ = 0.0f;
     }
 
-    r32 offsetZ = 1.0f * dt;
+    f32 offsetZ = 1.0f * dt;
     if (e.input.keyboard.isPressed[Z])
         e.state.cubeZ -= offsetZ;
     if (e.input.keyboard.isPressed[X])

@@ -8,11 +8,11 @@ struct vec3
         : x(0.0f), y(0.0f), z(0.0f)
     {
     }
-    vec3(r32 x, r32 y, r32 z)
+    vec3(f32 x, f32 y, f32 z)
         : x(x), y(y), z(z)
     {
     }
-    vec3(r32 x, r32 y)
+    vec3(f32 x, f32 y)
         : x(x), y(y), z(0.0f)
     {
     }
@@ -25,24 +25,24 @@ struct vec3
         return *this;
     }
 
-    inline vec3 operator/(r32 b)
+    inline vec3 operator/(f32 b)
     {
         return vec3(x / b, y / b, z / b);
     }
 
-    inline r32 lengthSq()
+    inline f32 lengthSq()
     {
         return (x * x + y * y + z * z);
     }
 
-    inline r32 length()
+    inline f32 length()
     {
         return sqrtf(lengthSq());
     }
 
     inline vec3 normal()
     {
-        r32 l = length();
+        f32 l = length();
         if (l == 0.0f)
             return vec3();
         return (*this / l);
@@ -53,7 +53,7 @@ struct vec3
         *this = this->normal();
     }
 
-    r32 x, y, z;
+    f32 x, y, z;
 };
 
 // addition, subtraction
@@ -80,17 +80,17 @@ inline vec3 operator-=(vec3 &a, vec3 b)
 }
 
 // vector * number
-inline vec3 operator*(r32 a, vec3 b)
+inline vec3 operator*(f32 a, vec3 b)
 {
     return {a * b.x, a * b.y, a * b.z};
 }
 
-inline vec3 operator*(vec3 b, r32 a)
+inline vec3 operator*(vec3 b, f32 a)
 {
     return a * b;
 }
 
-inline vec3 operator*=(vec3 &a, r32 b)
+inline vec3 operator*=(vec3 &a, f32 b)
 {
     a = b * a;
     return a;
@@ -103,12 +103,12 @@ inline vec3 operator-(vec3 a)
 }
 
 // dot product
-inline r32 operator*(vec3 a, vec3 b)
+inline f32 operator*(vec3 a, vec3 b)
 {
     return (a.x * b.x + a.y * b.y + a.z * b.z);
 }
 
-inline r32 DotProduct(vec3 a, vec3 b)
+inline f32 DotProduct(vec3 a, vec3 b)
 {
     return (a * b);
 }

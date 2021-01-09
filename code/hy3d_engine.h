@@ -17,12 +17,12 @@
 // TODO: add Z later
 struct hy3d_space
 {
-    r32 left;
-    r32 right;
-    r32 top;
-    r32 bottom;
-    r32 width;
-    r32 height;
+    f32 left;
+    f32 right;
+    f32 top;
+    f32 bottom;
+    f32 width;
+    f32 height;
 };
 
 struct triangle
@@ -48,11 +48,11 @@ struct bitmap_header
 
 struct hy3d_screen_transformer
 {
-    r32 xFactor, yFactor;
+    f32 xFactor, yFactor;
 
     vec3 GetTransformed(vec3 v)
     {
-        r32 zInv = 1 / v.z;
+        f32 zInv = 1 / v.z;
         v.x = (v.x * zInv + 1.0f) * xFactor;
         v.y = (v.y * zInv + 1.0f) * yFactor;
         return v;
@@ -125,7 +125,7 @@ struct mouse
     bool isInWindow;
     bool leftIsPressed;
     bool rightIsPressed;
-    r32 wheelDelta;
+    f32 wheelDelta;
 
     void SetPos(i16 x_, i16 y_)
     {
@@ -144,7 +144,7 @@ struct engine_state
 {
     // TEST:
     orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-    r32 cubeZ = 2.0f;
+    f32 cubeZ = 2.0f;
     bool drawLines = true;
 };
 

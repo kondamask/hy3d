@@ -9,7 +9,7 @@ struct Color
 
 struct orientation
 {
-    r32 thetaX, thetaY, thetaZ;
+    f32 thetaX, thetaY, thetaZ;
 };
 
 struct cube
@@ -40,7 +40,7 @@ struct cube
         {0, 255, 255}};
 };
 
-static cube MakeCube(r32 side, orientation o)
+static cube MakeCube(f32 side, orientation o)
 {
     cube result;
     side /= 2.0f;
@@ -70,7 +70,7 @@ struct axis3d
     orientation orientation;
 };
 
-static axis3d MakeAxis3D(vec3 center, r32 length, orientation o)
+static axis3d MakeAxis3D(vec3 center, f32 length, orientation o)
 {
     axis3d result;
     result.vertices[0] = center;

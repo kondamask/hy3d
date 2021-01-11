@@ -7,5 +7,6 @@ if not exist .\\data mkdir .\\data
 if not exist .\\build mkdir .\\build
 pushd .\\build
 
-cl  %COMPILER_FLAGS% .\\..\\code\\hy3d.cpp %LINKER_FLAGS%
+del *.pdb
+cl  %COMPILER_FLAGS% ..\\code\\hy3d.cpp %LINKER_FLAGS%
 popd

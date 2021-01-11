@@ -226,7 +226,7 @@ static u32* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *Fi
     return(Result);
 }*/
 
-void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
+static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
 {
     e.pixel_buffer = {};
     e.pixel_buffer.memory = pixel_buffer_memory;
@@ -362,7 +362,7 @@ static void ComposeFrame(hy3d_engine &e)
     }
 }
 
-void UpdateAndRender(hy3d_engine &e)
+static void UpdateAndRender(hy3d_engine &e)
 {
     UpdateFrame(e);
     ComposeFrame(e);

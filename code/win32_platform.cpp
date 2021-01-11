@@ -126,7 +126,7 @@ static void Win32InitializeWindow(win32_window &window, i16 width, i16 height, L
 	windowClass.hInstance = window.instance;
 
 	// TODO: FIX THE FUCKING ICON.
-	windowClass.hIcon = LoadIconA(window.instance, MAKEINTRESOURCEA(IDI_ICON));
+	windowClass.hIcon = LoadIconA(window.instance, MAKEINTRESOURCEA(IDI_ICON1));
 
 	if (!RegisterClassA(&windowClass))
 	{
@@ -392,7 +392,7 @@ static void *Win32ReadFile(char *filename)
 			DWORD bytesRead;
 			if (result)
 			{
-				if (ReadFile(fileHandle, result, fileSize32, &bytesRead, 0) && 
+				if (ReadFile(fileHandle, result, fileSize32, &bytesRead, 0) &&
 					fileSize32 == bytesRead)
 				{
 					// We read the file successfully

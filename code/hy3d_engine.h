@@ -106,13 +106,13 @@ struct keyboard
     bool autoRepeatEnabled = false;
     bool isPressed[KEYBOARD_BUTTON::COUNT];
 
-    void Clear()
+    inline void Clear()
     {
         for (int i = 0; i < KEYBOARD_BUTTON::COUNT; i++)
             isPressed[i] = false;
     }
 
-    void ToggleKey(KEYBOARD_BUTTON key)
+    inline void ToggleKey(KEYBOARD_BUTTON key)
     {
         isPressed[key] = !isPressed[key];
     }
@@ -122,10 +122,10 @@ struct mouse
 {
     i16 x;
     i16 y;
+    f32 wheelDelta;
     bool isInWindow;
     bool leftIsPressed;
     bool rightIsPressed;
-    f32 wheelDelta;
 
     void SetPos(i16 x_, i16 y_)
     {
@@ -158,6 +158,3 @@ struct hy3d_engine
     axis3d world_axis;
     std::chrono::steady_clock::time_point frameStart;
 };
-
-static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size);
-static void UpdateAndRender(hy3d_engine &e);

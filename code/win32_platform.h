@@ -15,15 +15,15 @@ struct win32_pixel_buffer
 	void *memory;
 	i16 width;
 	i16 height;
-	i8 bytesPerPixel;
 	i32 size;
+	i8 bytesPerPixel;
 };
 
 struct win32_window
 {
 	win32_pixel_buffer pixel_buffer;
-	HINSTANCE instance;
-	HWND handle;
 	win32_window_dimensions dimensions;
+	HWND handle;
+	HINSTANCE instance;
 	LPCSTR className = "HY3D_WINDOW_CLASS";
 };

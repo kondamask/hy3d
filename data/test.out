@@ -440,6 +440,14 @@ int CALLBACK WinMain(
 	hy3d_engine engine;
 	InitializeEngine(engine, window.pixel_buffer.memory, window.pixel_buffer.width, window.pixel_buffer.height, window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
 
+	char *filename = __FILE__;
+	read_file_result file = Win32ReadFile(filename);
+	if (file.content)
+	{
+		Win32WriteFile("w:/hy3d/data/test.out", file.size, file.content);
+		Win32FreeFileMemory(file.content);
+	}
+
 	i32 quitMessage = -1;
 	while (Win32ProcessMessages(window, engine.input, quitMessage))
 	{

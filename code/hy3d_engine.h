@@ -148,6 +148,12 @@ struct engine_state
     bool drawLines = true;
 };
 
+struct read_file_result
+{
+    void* content;
+    u32 size;
+};
+
 struct hy3d_engine
 {
     pixel_buffer pixel_buffer;

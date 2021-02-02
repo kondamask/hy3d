@@ -5,6 +5,29 @@
 #include "hy3d_types.h"
 #include <chrono>
 
+#define ASSERT(expression)
+
+#define KILOBYTES(val) (val * 1024LL)
+#define MEGABYTES(val) (KILOBYTES(val) * 1024LL)
+#define GIGABYTES(val) (MEGABYTES(val) * 1024LL)
+#define TERABYTES(val) (GIGABYTES(val) * 1024LL)
+
+struct engine_memory
+{
+    bool isInitialized;
+    u64 permanentMemorySize;
+    void *permanentMemory;
+    u64 transientMemorySize;
+    void *transientMemory;
+};
+
+struct read_file_result
+{
+    void *content;
+    u32 size;
+};
+
+// TODO: add Z later
 // NOTE:
 // The HY3D space is a 3d space where
 // Y IS UP
@@ -13,8 +36,6 @@
 // The origin (0,0,0) is in the center of the screen.
 // We normalize the coordinates so that the far right, left, top and down
 // take values -1.0 and +1.0
-
-// TODO: add Z later
 struct hy3d_space
 {
     f32 left;
@@ -142,25 +163,18 @@ struct engine_input
 
 struct engine_state
 {
-    // TEST:
-    orientation cubeOrientation{0.0f, 0.0f, 0.0f};
-    f32 cubeZ = 2.0f;
-    bool drawLines = true;
-};
-
-struct read_file_result
-{
-    void* content;
-    u32 size;
+    orientation cubeOrientation;
+    f32 cubeZ;
+    bool drawLines;
+    axis3d cubeAxis;
+    cube cube;
 };
 
 struct hy3d_engine
 {
     pixel_buffer pixel_buffer;
-    engine_state state;
     engine_input input;
     hy3d_space space;
     hy3d_screen_transformer screenTransformer;
-    axis3d world_axis;
     std::chrono::steady_clock::time_point frameStart;
 };

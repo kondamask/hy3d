@@ -1,24 +1,24 @@
 #include "hy3d_engine.h"
 
-static void PutPixel(pixel_buffer &pixel_buffer, i16 x, i16 y, Color c)
+static void PutPixel(pixel_buffer *pixel_buffer, i16 x, i16 y, Color c)
 {
     // Pixel 32 bits
     // Memory:      BB GG RR xx
     // Register:    xx RR GG BB
 
-    u32 *pixel = (u32 *)pixel_buffer.memory + y * pixel_buffer.width + x;
+    u32 *pixel = (u32 *)pixel_buffer->memory + y * pixel_buffer->width + x;
     bool isInBuffer =
         y >= 0 &&
-        y < pixel_buffer.height &&
-        x >= 0 &&               // left
-        x < pixel_buffer.width; // right
+        y < pixel_buffer->height &&
+        x >= 0 &&                // left
+        x < pixel_buffer->width; // right
     if (isInBuffer)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
     }
 }
 
-static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
+static void DrawLine(pixel_buffer *pixel_buffer, vec3 a, vec3 b, Color c)
 {
     f32 dx = b.x - a.x;
     f32 dy = b.y - a.y;
@@ -90,7 +90,7 @@ static void DrawLine(pixel_buffer &pixel_buffer, vec3 a, vec3 b, Color c)
 				 * v2
 */
 
-static void DrawTriangle(pixel_buffer &pixel_buffer, triangle t, Color c)
+static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
 {
     // Sort by y: v0 is at the top, v2 at the bottom
     if (t.v0.y < t.v1.y)
@@ -243,14 +243,13 @@ static void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 widt
     e.space.bottom = -1.0f;
     e.space.width = e.space.right - e.space.left;
     e.space.height = e.space.top - e.space.bottom;
-
     e.screenTransformer.xFactor = width / e.space.width;
     e.screenTransformer.yFactor = height / e.space.height;
 
     e.frameStart = std::chrono::steady_clock::now();
 }
 
-static void UpdateFrame(hy3d_engine &e)
+static void UpdateFrame(hy3d_engine &e, engine_state *state)
 {
     std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
     std::chrono::duration<f32> frameTime = frameEnd - e.frameStart;
@@ -260,110 +259,119 @@ static void UpdateFrame(hy3d_engine &e)
     // Cube Control
     f32 rotSpeed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
-        e.state.cubeOrientation.thetaX += rotSpeed;
+        state->cubeOrientation.thetaX += rotSpeed;
     if (e.input.keyboard.isPressed[DOWN])
-        e.state.cubeOrientation.thetaX -= rotSpeed;
+        state->cubeOrientation.thetaX -= rotSpeed;
     if (e.input.keyboard.isPressed[LEFT])
-        e.state.cubeOrientation.thetaY += rotSpeed;
+        state->cubeOrientation.thetaY += rotSpeed;
     if (e.input.keyboard.isPressed[RIGHT])
-        e.state.cubeOrientation.thetaY -= rotSpeed;
+        state->cubeOrientation.thetaY -= rotSpeed;
     if (e.input.keyboard.isPressed[Q])
-        e.state.cubeOrientation.thetaZ += rotSpeed;
+        state->cubeOrientation.thetaZ += rotSpeed;
     if (e.input.keyboard.isPressed[W])
-        e.state.cubeOrientation.thetaZ -= rotSpeed;
+        state->cubeOrientation.thetaZ -= rotSpeed;
 
     if (e.input.keyboard.isPressed[R])
     {
-        e.state.cubeOrientation.thetaX = 0.0f;
-        e.state.cubeOrientation.thetaY = 0.0f;
-        e.state.cubeOrientation.thetaZ = 0.0f;
+        state->cubeOrientation.thetaX = 0.0f;
+        state->cubeOrientation.thetaY = 0.0f;
+        state->cubeOrientation.thetaZ = 0.0f;
+
+        f32 offsetZ = 1.0f * dt;
+        if (e.input.keyboard.isPressed[Z])
+            state->cubeZ -= offsetZ;
+        if (e.input.keyboard.isPressed[X])
+            state->cubeZ += offsetZ;
     }
-
-    f32 offsetZ = 1.0f * dt;
-    if (e.input.keyboard.isPressed[Z])
-        e.state.cubeZ -= offsetZ;
-    if (e.input.keyboard.isPressed[X])
-        e.state.cubeZ += offsetZ;
-
-    e.state.drawLines = e.input.keyboard.isPressed[CTRL];
+    state->drawLines = e.input.keyboard.isPressed[CTRL];
 }
 
-static void ComposeFrame(hy3d_engine &e)
+static void ComposeFrame(hy3d_engine &e, engine_state *state)
 {
-    axis3d cube_axis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, e.state.cubeOrientation);
-    cube cube = MakeCube(1.0f, e.state.cubeOrientation);
+    state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
+    state->cube = MakeCube(1.0f, state->cubeOrientation);
 
     // Apply Transformations
-    mat3 transformation = RotateX(e.state.cubeOrientation.thetaX) *
-                          RotateY(e.state.cubeOrientation.thetaY) *
-                          RotateZ(e.state.cubeOrientation.thetaZ);
-    for (int i = 0; i < cube_axis.nVertices; i++)
+    mat3 transformation = RotateX(state->cubeOrientation.thetaX) *
+                          RotateY(state->cubeOrientation.thetaY) *
+                          RotateZ(state->cubeOrientation.thetaZ);
+    for (int i = 0; i < state->cubeAxis.nVertices; i++)
     {
-        cube_axis.vertices[i] *= transformation;
-        cube_axis.vertices[i] += {0.0f, 0.0f, e.state.cubeZ};
+        state->cubeAxis.vertices[i] *= transformation;
+        state->cubeAxis.vertices[i] += {0.0f, 0.0f, state->cubeZ};
     }
-    for (int i = 0; i < cube.nVertices; i++)
+    for (int i = 0; i < state->cube.nVertices; i++)
     {
-        cube.vertices[i] *= transformation;
-        cube.vertices[i] += {0.0f, 0.0f, e.state.cubeZ};
+        state->cube.vertices[i] *= transformation;
+        state->cube.vertices[i] += {0.0f, 0.0f, state->cubeZ};
     }
 
-    for (int i = 0; i < cube.nTrianglesVertices; i += 3)
+    for (int i = 0; i < state->cube.nTrianglesVertices; i += 3)
     {
         triangle t{
-            cube.vertices[cube.triangles[i]],
-            cube.vertices[cube.triangles[i + 1]],
-            cube.vertices[cube.triangles[i + 2]],
+            state->cube.vertices[state->cube.triangles[i]],
+            state->cube.vertices[state->cube.triangles[i + 1]],
+            state->cube.vertices[state->cube.triangles[i + 2]],
         };
         vec3 normal = CrossProduct(t.v1 - t.v0, t.v2 - t.v0);
-        cube.isTriangleVisible[i / 3] = normal * t.v0 <= 0;
+        state->cube.isTriangleVisible[i / 3] = normal * t.v0 <= 0;
     }
 
     // Transform to sceen
-    for (int i = 0; i < cube_axis.nVertices; i++)
+    for (int i = 0; i < state->cubeAxis.nVertices; i++)
     {
-        e.screenTransformer.Transform(cube_axis.vertices[i]);
+        e.screenTransformer.Transform(state->cubeAxis.vertices[i]);
     }
-    for (int i = 0; i < cube.nVertices; i++)
+    for (int i = 0; i < state->cube.nVertices; i++)
     {
-        e.screenTransformer.Transform(cube.vertices[i]);
+        e.screenTransformer.Transform(state->cube.vertices[i]);
     }
 
     //Draw Triangles
-    for (int i = 0; i < cube.nTrianglesVertices; i += 3)
+    for (int i = 0; i < state->cube.nTrianglesVertices; i += 3)
     {
-        if (cube.isTriangleVisible[i / 3])
+        if (state->cube.isTriangleVisible[i / 3])
         {
             triangle t{
-                cube.vertices[cube.triangles[i]],
-                cube.vertices[cube.triangles[i + 1]],
-                cube.vertices[cube.triangles[i + 2]],
+                state->cube.vertices[state->cube.triangles[i]],
+                state->cube.vertices[state->cube.triangles[i + 1]],
+                state->cube.vertices[state->cube.triangles[i + 2]],
             };
-            DrawTriangle(e.pixel_buffer, t, cube.colors[i / 6]);
+            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[i / 6]);
         }
     }
 
     //Draw Lines
-    if (e.state.drawLines)
+    if (state->drawLines)
     {
-        for (int i = 0; i < cube.nLinesVertices; i += 2)
+        for (int i = 0; i < state->cube.nLinesVertices; i += 2)
         {
-            vec3 a = cube.vertices[cube.lines[i]];
-            vec3 b = cube.vertices[cube.lines[i + 1]];
-            DrawLine(e.pixel_buffer, a, b, {255, 255, 255});
+            vec3 a = state->cube.vertices[state->cube.lines[i]];
+            vec3 b = state->cube.vertices[state->cube.lines[i + 1]];
+            DrawLine(&e.pixel_buffer, a, b, {255, 255, 255});
         }
     }
 
-    for (int i = 0; i < cube_axis.nLinesVertices; i += 2)
+    for (int i = 0; i < state->cubeAxis.nLinesVertices; i += 2)
     {
-        vec3 a = cube_axis.vertices[cube_axis.lines[i]];
-        vec3 b = cube_axis.vertices[cube_axis.lines[i + 1]];
-        DrawLine(e.pixel_buffer, a, b, {150, 150, 150});
+        vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
+        vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
+        DrawLine(&e.pixel_buffer, a, b, {150, 150, 150});
     }
 }
 
-static void UpdateAndRender(hy3d_engine &e)
+static void UpdateAndRender(hy3d_engine &e, engine_memory *memory)
 {
-    UpdateFrame(e);
-    ComposeFrame(e);
+    engine_state *state = (engine_state *)memory->permanentMemory;
+
+    if (!memory->isInitialized)
+    {
+        state->cubeOrientation = {0.0f, 0.0f, 0.0f};
+        state->cubeZ = 2.0f;
+        state->drawLines = false;
+        memory->isInitialized = true;
+    }
+
+    UpdateFrame(e, state);
+    ComposeFrame(e, state);
 }

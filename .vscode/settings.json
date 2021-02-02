@@ -1,4 +1,10 @@
 {
+    // Disable Undelining
+    "workbench.colorCustomizations": {
+        "editorError.foreground": "#00000000",
+        "editorWarning.foreground": "#00000000",
+        "editorInfo.foreground": "#00000000"
+    },
     "files.associations": {
         "*.m": "matlab",
         "*.sql": "sql",

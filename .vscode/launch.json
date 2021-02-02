@@ -10,7 +10,8 @@
             "symbolSearchPath": "${workspaceFolder}\\build",
             "logging": {
                 "moduleLoad": false
-            }
+            },
+            "preLaunchTask": "build"
         }
     ]
 }

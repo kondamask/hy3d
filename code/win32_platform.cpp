@@ -367,6 +367,7 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 	return true;
 }
 
+// NOTE: These file I/O functions should only be used for DEBUG purposes.
 static void Win32FreeFileMemory(void *memory)
 {
 	if (memory)
@@ -434,17 +435,32 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine,
 	int nShowCmd)
 {
+
 	win32_window window;
 	Win32InitializeWindow(window, 512, 512, "HY3D");
 
+	engine_memory engineMemory;
+	LPVOID baseAddress = (LPVOID)TERABYTES(2);
+	engineMemory.permanentMemorySize = MEGABYTES(64);
+	engineMemory.transientMemorySize = GIGABYTES(2);
+	u64 totalSize = engineMemory.permanentMemorySize + engineMemory.transientMemorySize;
+	engineMemory.permanentMemory = VirtualAlloc(baseAddress, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	engineMemory.transientMemory = (u8 *)engineMemory.permanentMemory + engineMemory.permanentMemorySize;
+	engineMemory.isInitialized = false;
+
 	hy3d_engine engine;
-	InitializeEngine(engine, window.pixel_buffer.memory, window.pixel_buffer.width, window.pixel_buffer.height, window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+	InitializeEngine(engine, window.pixel_buffer.memory,
+					 window.pixel_buffer.width, window.pixel_buffer.height,
+					 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
 
 	i32 quitMessage = -1;
-	while (Win32ProcessMessages(window, engine.input, quitMessage))
+	if (engineMemory.permanentMemory && engineMemory.transientMemory)
 	{
-		UpdateAndRender(engine);
-		Win32Update(window);
+		while (Win32ProcessMessages(window, engine.input, quitMessage))
+		{
+			UpdateAndRender(engine, &engineMemory);
+			Win32Update(window);
+		}
 	}
 	return quitMessage;
 }

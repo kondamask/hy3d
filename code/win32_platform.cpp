@@ -2,7 +2,7 @@
 #include "resources.h"
 #include <assert.h>
 
-static void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i16 width, i16 height)
+static inline void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i16 width, i16 height)
 {
 	if (pixel_buffer.memory)
 	{
@@ -114,7 +114,7 @@ static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPA
 	return result;
 }
 
-static void Win32InitializeWindow(win32_window &window, i16 width, i16 height, LPCSTR windowTitle)
+static inline void Win32InitializeWindow(win32_window &window, i16 width, i16 height, LPCSTR windowTitle)
 {
 	window.instance = GetModuleHandle(nullptr);
 
@@ -171,6 +171,17 @@ static void Win32InitializeWindow(win32_window &window, i16 width, i16 height, L
 	// created window by this function before it returns.
 
 	ShowWindow(window.handle, SW_SHOWDEFAULT);
+}
+
+static inline void Win32InitializeMemory(engine_memory &memory)
+{
+	LPVOID baseAddress = (LPVOID)TERABYTES(2);
+	memory.permanentMemorySize = MEGABYTES(64);
+	memory.transientMemorySize = GIGABYTES(2);
+	u64 totalSize = memory.permanentMemorySize + memory.transientMemorySize;
+	memory.permanentMemory = VirtualAlloc(baseAddress, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	memory.transientMemory = (u8 *)memory.permanentMemory + memory.permanentMemorySize;
+	memory.isInitialized = false;
 }
 
 static void Win32Update(win32_window &window)
@@ -438,28 +449,24 @@ int CALLBACK WinMain(
 
 	win32_window window;
 	Win32InitializeWindow(window, 512, 512, "HY3D");
-
-	engine_memory engineMemory;
-	LPVOID baseAddress = (LPVOID)TERABYTES(2);
-	engineMemory.permanentMemorySize = MEGABYTES(64);
-	engineMemory.transientMemorySize = GIGABYTES(2);
-	u64 totalSize = engineMemory.permanentMemorySize + engineMemory.transientMemorySize;
-	engineMemory.permanentMemory = VirtualAlloc(baseAddress, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	engineMemory.transientMemory = (u8 *)engineMemory.permanentMemory + engineMemory.permanentMemorySize;
-	engineMemory.isInitialized = false;
-
-	hy3d_engine engine;
-	InitializeEngine(engine, window.pixel_buffer.memory,
-					 window.pixel_buffer.width, window.pixel_buffer.height,
-					 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
-
-	i32 quitMessage = -1;
-	if (engineMemory.permanentMemory && engineMemory.transientMemory)
+	if (window)
 	{
-		while (Win32ProcessMessages(window, engine.input, quitMessage))
+		engine_memory engineMemory;
+		Win32InitializeMemory(engineMemory);
+
+		if (engineMemory.permanentMemory && engineMemory.transientMemory)
 		{
-			UpdateAndRender(engine, &engineMemory);
-			Win32Update(window);
+			hy3d_engine engine;
+			InitializeEngine(engine, window.pixel_buffer.memory,
+							 window.pixel_buffer.width, window.pixel_buffer.height,
+							 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+
+			i32 quitMessage = -1;
+			while (Win32ProcessMessages(window, engine.input, quitMessage))
+			{
+				UpdateAndRender(engine, &engineMemory);
+				Win32Update(window);
+			}
 		}
 	}
 	return quitMessage;

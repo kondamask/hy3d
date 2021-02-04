@@ -5,12 +5,32 @@
 #include "hy3d_types.h"
 #include <chrono>
 
-#define ASSERT(expression)
+// TODO: Make this an actual assetion
+#if 1
+#define ASSERT(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#else
+#define ASSERT(Expression)
+#endif
 
 #define KILOBYTES(val) (val * 1024LL)
 #define MEGABYTES(val) (KILOBYTES(val) * 1024LL)
 #define GIGABYTES(val) (MEGABYTES(val) * 1024LL)
 #define TERABYTES(val) (GIGABYTES(val) * 1024LL)
+
+struct debug_read_file_result
+{
+    void *content;
+    u32 size;
+};
+
+#define DEBUG_READ_FILE(name) debug_read_file_result name(char *filename)
+typedef DEBUG_READ_FILE(debug_read_file);
+
+#define DEBUG_WRITE_FILE(name) bool name(char *filename, u32 memorySize, void *memory)
+typedef DEBUG_WRITE_FILE(debug_write_file);
+
+#define DEBUG_FREE_FILE(name) void name(void *memory)
+typedef DEBUG_FREE_FILE(debug_free_file);
 
 struct engine_memory
 {
@@ -19,36 +39,28 @@ struct engine_memory
     void *permanentMemory;
     u64 transientMemorySize;
     void *transientMemory;
+
+    debug_read_file *DEBUGReadFile;
+    debug_write_file *DEBUGWriteFile;
+    debug_free_file *DEBUGFreeFileMemory;
 };
 
-struct read_file_result
+struct pixel_buffer
 {
-    void *content;
-    u32 size;
+    void *memory;
+    i16 width;
+    i16 height;
+    i8 bytesPerPixel;
+    i32 size;
 };
 
-// TODO: add Z later
-// NOTE:
-// The HY3D space is a 3d space where
-// Y IS UP
-// X IS RIGHT
-// Z IS INTO THE SCREEN
-// The origin (0,0,0) is in the center of the screen.
-// We normalize the coordinates so that the far right, left, top and down
-// take values -1.0 and +1.0
-struct hy3d_space
+struct engine_state
 {
-    f32 left;
-    f32 right;
-    f32 top;
-    f32 bottom;
-    f32 width;
-    f32 height;
-};
-
-struct triangle
-{
-    vec3 v0, v1, v2;
+    orientation cubeOrientation;
+    f32 cubeZ;
+    bool drawLines;
+    axis3d cubeAxis;
+    cube cube;
 };
 
 #pragma pack(push, 1)
@@ -67,7 +79,26 @@ struct bitmap_header
 };
 #pragma pack(pop)
 
-struct hy3d_screen_transformer
+// TODO: add Z later
+// NOTE:
+// The HY3D space is a 3d space where
+// Y IS UP
+// X IS RIGHT
+// Z IS INTO THE SCREEN
+// The origin (0,0,0) is in the center of the screen.
+// We normalize the coordinates so that the far right, left, top and down
+// take values -1.0 and +1.0
+struct space3d
+{
+    f32 left;
+    f32 right;
+    f32 top;
+    f32 bottom;
+    f32 width;
+    f32 height;
+};
+
+struct screen_transformer
 {
     f32 xFactor, yFactor;
 
@@ -83,15 +114,6 @@ struct hy3d_screen_transformer
     {
         v = GetTransformed(v);
     }
-};
-
-struct pixel_buffer
-{
-    void *memory;
-    i16 width;
-    i16 height;
-    i8 bytesPerPixel;
-    i32 size;
 };
 
 enum KEYBOARD_BUTTON
@@ -148,7 +170,7 @@ struct mouse
     bool leftIsPressed;
     bool rightIsPressed;
 
-    void SetPos(i16 x_, i16 y_)
+    inline void SetPos(i16 x_, i16 y_)
     {
         x = x_;
         y = y_;
@@ -161,20 +183,31 @@ struct engine_input
     keyboard keyboard;
 };
 
-struct engine_state
-{
-    orientation cubeOrientation;
-    f32 cubeZ;
-    bool drawLines;
-    axis3d cubeAxis;
-    cube cube;
-};
-
 struct hy3d_engine
 {
     pixel_buffer pixel_buffer;
     engine_input input;
-    hy3d_space space;
-    hy3d_screen_transformer screenTransformer;
+    space3d space;
+    screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;
 };
+
+// IMPORTANT:
+// This is the way to create to dynamicaly load your code. In short it
+// says that there is a function of type X with THESE parameters and someone
+// is goind to call it with a function pointer at some point. So we just need
+// that function pointer to load our code whenever we want.
+// https://hero.handmade.network/episode/code/day021/
+
+// 1. Make a macro that defines a function with the name we pass it
+#define UPDATE_AND_RENDER(name) void name(hy3d_engine &e, engine_memory *memory)
+// 2. Create a typedef that says: there is a function of type void (the actual type of the function)
+//    I want to replace it with <name>. So now the function is of type update_and_render.
+//    I can use this to get a pointer to said function.
+typedef UPDATE_AND_RENDER(update_and_render);
+// This translates to:
+// typedef void update_and_render(hy3d_engine &e, engine_memory *memory);
+// 3. Create a stub function that prevents the program from crashing it.
+UPDATE_AND_RENDER(UpdateAndRenderStub)
+{
+}

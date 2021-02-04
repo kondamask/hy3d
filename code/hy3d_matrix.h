@@ -5,7 +5,7 @@ struct mat3
 {
     float cell[3][3]; // [row][column]
 };
-
+/*
 static mat3 Identity()
 {
     return {
@@ -21,7 +21,7 @@ static mat3 Scale(float factor)
         0.0f, factor, 0.0f,
         0.0f, 0.0f, factor};
 }
-
+*/
 static mat3 RotateZ(float theta)
 {
     float sinTheta = sinf(theta);

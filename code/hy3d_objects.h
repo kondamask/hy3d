@@ -2,6 +2,11 @@
 #include "hy3d_vector.h"
 #include "hy3d_types.h"
 
+struct triangle
+{
+    vec3 v0, v1, v2;
+};
+
 struct Color
 {
     u8 r, g, b;

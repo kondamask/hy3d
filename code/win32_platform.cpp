@@ -2,6 +2,105 @@
 #include "resources.h"
 #include <assert.h>
 
+// NOTE: These file I/O functions should only be used for DEBUG purposes.
+DEBUG_FREE_FILE(DEBUGFreeFileMemory)
+{
+	if (memory)
+	{
+		VirtualFree(memory, 0, MEM_RELEASE);
+	}
+}
+
+DEBUG_READ_FILE(DEBUGReadFile)
+{
+	debug_read_file_result result = {};
+	HANDLE fileHandle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if (fileHandle != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER fileSize;
+		if (GetFileSizeEx(fileHandle, &fileSize))
+		{
+			// Truncate 64 bit value to 32 bit because VirtualAlloc only takes 32bit value
+			ASSERT(fileSize.QuadPart <= 0xFFFFFFFF);
+			result.size = (uint32_t)fileSize.QuadPart;
+
+			result.content = VirtualAlloc(0, result.size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			DWORD bytesRead;
+			if (result.content)
+			{
+				if (ReadFile(fileHandle, result.content, result.size, &bytesRead, 0) &&
+					result.size == bytesRead)
+				{
+					// We read the file successfully
+				}
+				else
+				{
+					DEBUGFreeFileMemory(result.content);
+					result = {};
+				}
+			}
+		}
+		CloseHandle(fileHandle);
+	}
+	// NOTE:  We can add logging in case these steps fail.
+	return result;
+}
+
+DEBUG_WRITE_FILE(DEBUGWriteFile)
+{
+	bool result = false;
+	HANDLE fileHandle = CreateFileA(filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+	if (fileHandle != INVALID_HANDLE_VALUE)
+	{
+		DWORD bytesWritten;
+		if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
+		{
+			// We wrote into the file successfully
+			result = (bytesWritten == memorySize);
+		}
+		CloseHandle(fileHandle);
+	}
+	// NOTE:  We can add logging in case these steps fail.
+	return result;
+}
+
+struct win32_engine_code
+{
+	HMODULE dll;
+	update_and_render *UpdateAndRender;
+
+	bool isValid;
+};
+
+static win32_engine_code Win32LoadEngineCode()
+{
+	win32_engine_code engineCode = {};
+
+	bool copied = CopyFileA("hy3d_engine.dll", "hy3d_engine_copy.dll", FALSE);
+	engineCode.dll = LoadLibraryA("hy3d_engine_copy.dll");
+	if (engineCode.dll)
+	{
+		engineCode.UpdateAndRender = (update_and_render *)GetProcAddress(engineCode.dll, "UpdateAndRender");
+		engineCode.isValid = engineCode.UpdateAndRender;
+	}
+	if (!engineCode.isValid)
+	{
+		engineCode.UpdateAndRender = UpdateAndRenderStub;
+	}
+	return engineCode;
+}
+
+static void Win32UnloadEngineCode(win32_engine_code *engineCode)
+{
+	if (engineCode->dll)
+	{
+		FreeLibrary(engineCode->dll);
+		engineCode->dll = 0;
+	}
+	engineCode->isValid = false;
+	engineCode->UpdateAndRender = UpdateAndRenderStub;
+}
+
 static inline void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i16 width, i16 height)
 {
 	if (pixel_buffer.memory)
@@ -182,6 +281,10 @@ static inline void Win32InitializeMemory(engine_memory &memory)
 	memory.permanentMemory = VirtualAlloc(baseAddress, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	memory.transientMemory = (u8 *)memory.permanentMemory + memory.permanentMemorySize;
 	memory.isInitialized = false;
+
+	memory.DEBUGFreeFileMemory = DEBUGFreeFileMemory;
+	memory.DEBUGReadFile = DEBUGReadFile;
+	memory.DEBUGWriteFile = DEBUGWriteFile;
 }
 
 static void Win32Update(win32_window &window)
@@ -378,68 +481,6 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 	return true;
 }
 
-// NOTE: These file I/O functions should only be used for DEBUG purposes.
-static void Win32FreeFileMemory(void *memory)
-{
-	if (memory)
-	{
-		VirtualFree(memory, 0, MEM_RELEASE);
-	}
-}
-
-static read_file_result Win32ReadFile(char *filename)
-{
-	read_file_result result = {};
-	HANDLE fileHandle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-	if (fileHandle != INVALID_HANDLE_VALUE)
-	{
-		LARGE_INTEGER fileSize;
-		if (GetFileSizeEx(fileHandle, &fileSize))
-		{
-			// Truncate 64 bit value to 32 bit because VirtualAlloc only takes 32bit value
-			assert(fileSize.QuadPart <= 0xFFFFFFFF);
-			result.size = (uint32_t)fileSize.QuadPart;
-
-			result.content = VirtualAlloc(0, result.size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-			DWORD bytesRead;
-			if (result.content)
-			{
-				if (ReadFile(fileHandle, result.content, result.size, &bytesRead, 0) &&
-					result.size == bytesRead)
-				{
-					// We read the file successfully
-				}
-				else
-				{
-					Win32FreeFileMemory(result.content);
-					result = {};
-				}
-			}
-		}
-		CloseHandle(fileHandle);
-	}
-	// NOTE: We can add logging in case these steps fail.
-	return result;
-}
-
-static bool Win32WriteFile(char *filename, u32 memorySize, void *memory)
-{
-	bool result = false;
-	HANDLE fileHandle = CreateFileA(filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-	if (fileHandle != INVALID_HANDLE_VALUE)
-	{
-		DWORD bytesWritten;
-		if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
-		{
-			// We wrote into the file successfully
-			result = (bytesWritten == memorySize);
-		}
-		CloseHandle(fileHandle);
-	}
-	// NOTE: We can add logging in case these steps fail.
-	return result;
-}
-
 int CALLBACK WinMain(
 	HINSTANCE instance,
 	HINSTANCE prevInstance,
@@ -449,7 +490,7 @@ int CALLBACK WinMain(
 
 	win32_window window;
 	Win32InitializeWindow(window, 512, 512, "HY3D");
-	if (window)
+	if (window.handle)
 	{
 		engine_memory engineMemory;
 		Win32InitializeMemory(engineMemory);
@@ -457,17 +498,47 @@ int CALLBACK WinMain(
 		if (engineMemory.permanentMemory && engineMemory.transientMemory)
 		{
 			hy3d_engine engine;
-			InitializeEngine(engine, window.pixel_buffer.memory,
-							 window.pixel_buffer.width, window.pixel_buffer.height,
-							 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+			//InitializeEngine(engine, window.pixel_buffer.memory,
+			//				 window.pixel_buffer.width, window.pixel_buffer.height,
+			//				 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
+			engine.pixel_buffer = {};
+			engine.pixel_buffer.memory = window.pixel_buffer.memory;
+			engine.pixel_buffer.width = window.pixel_buffer.width;
+			engine.pixel_buffer.height = window.pixel_buffer.height;
+			engine.pixel_buffer.bytesPerPixel = window.pixel_buffer.bytesPerPixel;
+			engine.pixel_buffer.size = window.pixel_buffer.size;
+
+			engine.input = {};
+
+			engine.space.left = -1.0f;
+			engine.space.right = 1.0f;
+			engine.space.top = 1.0f;
+			engine.space.bottom = -1.0f;
+			engine.space.width = engine.space.right - engine.space.left;
+			engine.space.height = engine.space.top - engine.space.bottom;
+			engine.screenTransformer.xFactor = window.pixel_buffer.width / engine.space.width;
+			engine.screenTransformer.yFactor = window.pixel_buffer.height / engine.space.height;
+
+			engine.frameStart = std::chrono::steady_clock::now();
+
+			win32_engine_code engindeCode = {};
+			engindeCode = Win32LoadEngineCode();
+			u8 loadCounter = 0;
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))
 			{
-				UpdateAndRender(engine, &engineMemory);
+				if (loadCounter++ > 120)
+				{
+					loadCounter = 0;
+					Win32UnloadEngineCode(&engindeCode);
+					engindeCode = Win32LoadEngineCode();
+				}
+				engindeCode.UpdateAndRender(engine, &engineMemory);
 				Win32Update(window);
 			}
+			return quitMessage;
 		}
 	}
-	return quitMessage;
+	return 0;
 }

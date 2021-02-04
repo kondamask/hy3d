@@ -1,5 +1,28 @@
 #include "hy3d_engine.h"
 
+static inline void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
+{
+    e.pixel_buffer = {};
+    e.pixel_buffer.memory = pixel_buffer_memory;
+    e.pixel_buffer.width = width;
+    e.pixel_buffer.height = height;
+    e.pixel_buffer.bytesPerPixel = bytesPerPixel;
+    e.pixel_buffer.size = width * height * bytesPerPixel;
+
+    e.input = {};
+
+    e.space.left = -1.0f;
+    e.space.right = 1.0f;
+    e.space.top = 1.0f;
+    e.space.bottom = -1.0f;
+    e.space.width = e.space.right - e.space.left;
+    e.space.height = e.space.top - e.space.bottom;
+    e.screenTransformer.xFactor = width / e.space.width;
+    e.screenTransformer.yFactor = height / e.space.height;
+
+    e.frameStart = std::chrono::steady_clock::now();
+}
+
 static void PutPixel(pixel_buffer *pixel_buffer, i16 x, i16 y, Color c)
 {
     // Pixel 32 bits
@@ -214,7 +237,6 @@ static void DrawTest(int x_in, int y_in)
 static u32* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *FileName)
 {
     uint32 *Result = 0;
-    
     debug_read_file_result ReadResult = ReadEntireFile(Thread, FileName);    
     if(ReadResult.ContentsSize != 0)
     {
@@ -224,38 +246,27 @@ static u32* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *Fi
     }
 
     return(Result);
-}*/
-
-static inline void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
-{
-    e.pixel_buffer = {};
-    e.pixel_buffer.memory = pixel_buffer_memory;
-    e.pixel_buffer.width = width;
-    e.pixel_buffer.height = height;
-    e.pixel_buffer.bytesPerPixel = bytesPerPixel;
-    e.pixel_buffer.size = width * height * bytesPerPixel;
-
-    e.input = {};
-
-    e.space.left = -1.0f;
-    e.space.right = 1.0f;
-    e.space.top = 1.0f;
-    e.space.bottom = -1.0f;
-    e.space.width = e.space.right - e.space.left;
-    e.space.height = e.space.top - e.space.bottom;
-    e.screenTransformer.xFactor = width / e.space.width;
-    e.screenTransformer.yFactor = height / e.space.height;
-
-    e.frameStart = std::chrono::steady_clock::now();
 }
+*/
 
-static void UpdateFrame(hy3d_engine &e, engine_state *state)
+extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 {
     std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
     std::chrono::duration<f32> frameTime = frameEnd - e.frameStart;
     f32 dt = frameTime.count();
     e.frameStart = frameEnd;
 
+    engine_state *state = (engine_state *)memory->permanentMemory;
+
+    if (!memory->isInitialized)
+    {
+        state->cubeOrientation = {0.0f, 0.0f, 0.0f};
+        state->cubeZ = 2.0f;
+        state->drawLines = false;
+        memory->isInitialized = true;
+    }
+
+    // NOTE:  UPDATE
     // Cube Control
     f32 rotSpeed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
@@ -284,10 +295,8 @@ static void UpdateFrame(hy3d_engine &e, engine_state *state)
             state->cubeZ += offsetZ;
     }
     state->drawLines = e.input.keyboard.isPressed[CTRL];
-}
 
-static void ComposeFrame(hy3d_engine &e, engine_state *state)
-{
+    // NOTE:  RENDER
     state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
     state->cube = MakeCube(1.0f, state->cubeOrientation);
 
@@ -337,7 +346,7 @@ static void ComposeFrame(hy3d_engine &e, engine_state *state)
                 state->cube.vertices[state->cube.triangles[i + 1]],
                 state->cube.vertices[state->cube.triangles[i + 2]],
             };
-            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[i / 6]);
+            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[0]);
         }
     }
 
@@ -356,22 +365,16 @@ static void ComposeFrame(hy3d_engine &e, engine_state *state)
     {
         vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-        DrawLine(&e.pixel_buffer, a, b, {150, 150, 150});
+        DrawLine(&e.pixel_buffer, a, b, {0, 255, 0});
     }
 }
 
-static void UpdateAndRender(hy3d_engine &e, engine_memory *memory)
+#include "Windows.h"
+BOOL WINAPI DllMain(
+    _In_  HINSTANCE hinstDLL,
+    _In_  DWORD fdwReason,
+    _In_  LPVOID lpvReserved
+                    )
 {
-    engine_state *state = (engine_state *)memory->permanentMemory;
-
-    if (!memory->isInitialized)
-    {
-        state->cubeOrientation = {0.0f, 0.0f, 0.0f};
-        state->cubeZ = 2.0f;
-        state->drawLines = false;
-        memory->isInitialized = true;
-    }
-
-    UpdateFrame(e, state);
-    ComposeFrame(e, state);
+    return(TRUE);
 }

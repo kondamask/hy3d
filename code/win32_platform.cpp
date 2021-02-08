@@ -64,43 +64,6 @@ DEBUG_WRITE_FILE(DEBUGWriteFile)
 	return result;
 }
 
-struct win32_engine_code
-{
-	HMODULE dll;
-	update_and_render *UpdateAndRender;
-
-	bool isValid;
-};
-
-static win32_engine_code Win32LoadEngineCode()
-{
-	win32_engine_code engineCode = {};
-
-	bool copied = CopyFileA("hy3d_engine.dll", "hy3d_engine_copy.dll", FALSE);
-	engineCode.dll = LoadLibraryA("hy3d_engine_copy.dll");
-	if (engineCode.dll)
-	{
-		engineCode.UpdateAndRender = (update_and_render *)GetProcAddress(engineCode.dll, "UpdateAndRender");
-		engineCode.isValid = engineCode.UpdateAndRender;
-	}
-	if (!engineCode.isValid)
-	{
-		engineCode.UpdateAndRender = UpdateAndRenderStub;
-	}
-	return engineCode;
-}
-
-static void Win32UnloadEngineCode(win32_engine_code *engineCode)
-{
-	if (engineCode->dll)
-	{
-		FreeLibrary(engineCode->dll);
-		engineCode->dll = 0;
-	}
-	engineCode->isValid = false;
-	engineCode->UpdateAndRender = UpdateAndRenderStub;
-}
-
 static inline void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i16 width, i16 height)
 {
 	if (pixel_buffer.memory)
@@ -481,6 +444,50 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 	return true;
 }
 
+static FILETIME Win32GetWriteTime(char *filename)
+{
+	FILETIME result = {};
+
+	WIN32_FIND_DATA data;
+	HANDLE handle = FindFirstFileA(filename, &data);
+	if (handle != INVALID_HANDLE_VALUE)
+	{
+		result = data.ftLastWriteTime;
+		FindClose(handle);
+	}
+	return result;
+}
+
+static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilename)
+{
+	engineCode->writeTime = Win32GetWriteTime(sourceFilename);
+
+	// NOTE:  THIS DOESN'T WORK THE FIRST TIME IT'S CALLED AFTER UNLOAD.
+	// IT GETS CALLED AGAIN AND THEN WORKS. Y?
+	bool copied = CopyFileA(sourceFilename, "hy3d_engine_copy.dll", FALSE);
+	engineCode->dll = LoadLibraryA("hy3d_engine_copy.dll");
+	if (engineCode->dll)
+	{
+		engineCode->UpdateAndRender = (update_and_render *)GetProcAddress(engineCode->dll, "UpdateAndRender");
+		engineCode->isValid = engineCode->UpdateAndRender;
+	}
+	if (!engineCode->isValid)
+	{
+		engineCode->UpdateAndRender = UpdateAndRenderStub;
+	}
+}
+
+static void Win32UnloadEngineCode(win32_engine_code *engineCode)
+{
+	if (engineCode->dll)
+	{
+		FreeLibrary(engineCode->dll);
+		engineCode->dll = 0;
+	}
+	engineCode->isValid = false;
+	engineCode->UpdateAndRender = UpdateAndRenderStub;
+}
+
 int CALLBACK WinMain(
 	HINSTANCE instance,
 	HINSTANCE prevInstance,
@@ -521,20 +528,28 @@ int CALLBACK WinMain(
 
 			engine.frameStart = std::chrono::steady_clock::now();
 
-			win32_engine_code engindeCode = {};
-			engindeCode = Win32LoadEngineCode();
-			u8 loadCounter = 0;
+			win32_engine_code engineCode;
+			Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))
 			{
-				if (loadCounter++ > 120)
+				// TODO:  Something is wrong here. After reload th newWriteTime doesn't have a
+				// a correct value and we reload the code for no reason. This might happen beacause
+				// the copyfile function doesn't work the fist time it's called.
+				FILETIME newWriteTime = Win32GetWriteTime("hy3d_engine.dll");
+				if (CompareFileTime(&newWriteTime, &engineCode.writeTime) == 1)
 				{
-					loadCounter = 0;
-					Win32UnloadEngineCode(&engindeCode);
-					engindeCode = Win32LoadEngineCode();
+					// NOTE:  FOR SOME FUCKING REASON THE COPYFILE DOESN'T WORK UNLESS
+					// SOME TIME HAS PASSED SINCE WE UNLOADED THE ORIGINAL DLL. SO WE EITHER
+					// NEED TO SET A BREAKPOINT HERE OR FORCE THE SYSTEM TO SLEEP FOR
+					// A SMALL AMOUNT OF TIME BETWEEN THESE TWO ACTION.
+					// IS THIS EVEN FIXABLE?
+					Win32UnloadEngineCode(&engineCode);
+					Sleep(400);
+					Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
 				}
-				engindeCode.UpdateAndRender(engine, &engineMemory);
+				engineCode.UpdateAndRender(engine, &engineMemory);
 				Win32Update(window);
 			}
 			return quitMessage;

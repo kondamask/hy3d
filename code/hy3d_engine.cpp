@@ -346,7 +346,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
                 state->cube.vertices[state->cube.triangles[i + 1]],
                 state->cube.vertices[state->cube.triangles[i + 2]],
             };
-            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[0]);
+            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[i/6]);
         }
     }
 
@@ -365,16 +365,6 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     {
         vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-        DrawLine(&e.pixel_buffer, a, b, {0, 255, 0});
+        DrawLine(&e.pixel_buffer, a, b, {255, 150, 0});
     }
-}
-
-#include "Windows.h"
-BOOL WINAPI DllMain(
-    _In_  HINSTANCE hinstDLL,
-    _In_  DWORD fdwReason,
-    _In_  LPVOID lpvReserved
-                    )
-{
-    return(TRUE);
 }

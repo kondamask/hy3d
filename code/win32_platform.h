@@ -27,3 +27,12 @@ struct win32_window
 	HINSTANCE instance;
 	LPCSTR className = "HY3D_WINDOW_CLASS";
 };
+
+struct win32_engine_code
+{
+	HMODULE dll;
+	FILETIME writeTime;
+	update_and_render *UpdateAndRender;
+
+	bool isValid;
+};

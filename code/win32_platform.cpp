@@ -124,7 +124,7 @@ static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPA
 	{
 		PAINTSTRUCT paint;
 		HDC deviceContext = BeginPaint(handle, &paint);
-		Win32DisplayPixelBuffer(window->pixel_buffer, deviceContext);
+		Win32DisplayPixelBuffer(window->pixelBuffer, deviceContext);
 		EndPaint(handle, &paint);
 		break;
 	}
@@ -196,7 +196,7 @@ static inline void Win32InitializeWindow(win32_window &window, i16 width, i16 he
 		return;
 	}
 
-	Win32InitializeBackbuffer(window.pixel_buffer, width, height);
+	Win32InitializeBackbuffer(window.pixelBuffer, width, height);
 
 	window.dimensions.width = width;
 	window.dimensions.height = height;
@@ -253,8 +253,8 @@ static inline void Win32InitializeMemory(engine_memory &memory)
 static void Win32Update(win32_window &window)
 {
 	HDC deviceContext = GetDC(window.handle);
-	Win32DisplayPixelBuffer(window.pixel_buffer, deviceContext);
-	Win32ClearBackbuffer(window.pixel_buffer);
+	Win32DisplayPixelBuffer(window.pixelBuffer, deviceContext);
+	Win32ClearBackbuffer(window.pixelBuffer);
 	ReleaseDC(window.handle, deviceContext);
 }
 
@@ -462,9 +462,13 @@ static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilen
 {
 	engineCode->writeTime = Win32GetWriteTime(sourceFilename);
 
-	// NOTE:  THIS DOESN'T WORK THE FIRST TIME IT'S CALLED AFTER UNLOAD.
-	// IT GETS CALLED AGAIN AND THEN WORKS. Y?
-	bool copied = CopyFileA(sourceFilename, "hy3d_engine_copy.dll", FALSE);
+	// NOTE:  FOR SOME FUCKING REASON THE COPYFILE DOESN'T WORK UNLESS
+	// SOME TIME HAS PASSED SINCE WE UNLOADED THE ORIGINAL DLL. OTHERWISE
+	// WE GET ERROR CODE 32: The process cannot access the file because it is being used by another process.
+	// IS THIS EVEN FIXABLE?
+	Sleep(500);
+	BOOL result = CopyFileA(sourceFilename, "hy3d_engine_copy.dll", FALSE);
+	DWORD error = GetLastError();
 	engineCode->dll = LoadLibraryA("hy3d_engine_copy.dll");
 	if (engineCode->dll)
 	{
@@ -481,7 +485,7 @@ static void Win32UnloadEngineCode(win32_engine_code *engineCode)
 {
 	if (engineCode->dll)
 	{
-		FreeLibrary(engineCode->dll);
+		BOOL result = FreeLibrary(engineCode->dll);
 		engineCode->dll = 0;
 	}
 	engineCode->isValid = false;
@@ -504,49 +508,20 @@ int CALLBACK WinMain(
 
 		if (engineMemory.permanentMemory && engineMemory.transientMemory)
 		{
-			hy3d_engine engine;
-			//InitializeEngine(engine, window.pixel_buffer.memory,
-			//				 window.pixel_buffer.width, window.pixel_buffer.height,
-			//				 window.pixel_buffer.bytesPerPixel, window.pixel_buffer.size);
-			engine.pixel_buffer = {};
-			engine.pixel_buffer.memory = window.pixel_buffer.memory;
-			engine.pixel_buffer.width = window.pixel_buffer.width;
-			engine.pixel_buffer.height = window.pixel_buffer.height;
-			engine.pixel_buffer.bytesPerPixel = window.pixel_buffer.bytesPerPixel;
-			engine.pixel_buffer.size = window.pixel_buffer.size;
-
-			engine.input = {};
-
-			engine.space.left = -1.0f;
-			engine.space.right = 1.0f;
-			engine.space.top = 1.0f;
-			engine.space.bottom = -1.0f;
-			engine.space.width = engine.space.right - engine.space.left;
-			engine.space.height = engine.space.top - engine.space.bottom;
-			engine.screenTransformer.xFactor = window.pixel_buffer.width / engine.space.width;
-			engine.screenTransformer.yFactor = window.pixel_buffer.height / engine.space.height;
-
-			engine.frameStart = std::chrono::steady_clock::now();
-
 			win32_engine_code engineCode;
+			hy3d_engine engine;
+			engine.Initialize(window.pixelBuffer.memory,
+							  window.pixelBuffer.width, window.pixelBuffer.height,
+							  window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
 			Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))
 			{
-				// TODO:  Something is wrong here. After reload th newWriteTime doesn't have a
-				// a correct value and we reload the code for no reason. This might happen beacause
-				// the copyfile function doesn't work the fist time it's called.
 				FILETIME newWriteTime = Win32GetWriteTime("hy3d_engine.dll");
 				if (CompareFileTime(&newWriteTime, &engineCode.writeTime) == 1)
 				{
-					// NOTE:  FOR SOME FUCKING REASON THE COPYFILE DOESN'T WORK UNLESS
-					// SOME TIME HAS PASSED SINCE WE UNLOADED THE ORIGINAL DLL. SO WE EITHER
-					// NEED TO SET A BREAKPOINT HERE OR FORCE THE SYSTEM TO SLEEP FOR
-					// A SMALL AMOUNT OF TIME BETWEEN THESE TWO ACTION.
-					// IS THIS EVEN FIXABLE?
 					Win32UnloadEngineCode(&engineCode);
-					Sleep(400);
 					Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
 				}
 				engineCode.UpdateAndRender(engine, &engineMemory);

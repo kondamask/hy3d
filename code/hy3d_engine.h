@@ -7,7 +7,11 @@
 
 // TODO: Make this an actual assetion
 #if 1
-#define ASSERT(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#define ASSERT(Expression) \
+    if (!(Expression))     \
+    {                      \
+        *(int *)0 = 0;     \
+    }
 #else
 #define ASSERT(Expression)
 #endif
@@ -185,11 +189,35 @@ struct engine_input
 
 struct hy3d_engine
 {
-    pixel_buffer pixel_buffer;
+    pixel_buffer pixelBuffer;
     engine_input input;
     space3d space;
     screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;
+
+    void Initialize(void *pixelBufferMemory, i16 width, i16 height, i8 bytesPerPixel, i32 bufferSize)
+    {
+        pixelBuffer = {};
+        pixelBuffer.memory = pixelBufferMemory;
+        pixelBuffer.width = width;
+        pixelBuffer.height = height;
+        pixelBuffer.bytesPerPixel = bytesPerPixel;
+        pixelBuffer.size = width * height * bytesPerPixel;
+
+        input = {};
+
+        space.left = -1.0f;
+        space.right = 1.0f;
+        space.top = 1.0f;
+        space.bottom = -1.0f;
+        space.width = space.right - space.left;
+        space.height = space.top - space.bottom;
+
+        screenTransformer.xFactor = width / space.width;
+        screenTransformer.yFactor = height / space.height;
+
+        frameStart = std::chrono::steady_clock::now();
+    }
 };
 
 // IMPORTANT:
@@ -208,6 +236,4 @@ typedef UPDATE_AND_RENDER(update_and_render);
 // This translates to:
 // typedef void update_and_render(hy3d_engine &e, engine_memory *memory);
 // 3. Create a stub function that prevents the program from crashing it.
-UPDATE_AND_RENDER(UpdateAndRenderStub)
-{
-}
+UPDATE_AND_RENDER(UpdateAndRenderStub) {}

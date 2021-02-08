@@ -21,7 +21,7 @@ struct win32_pixel_buffer
 
 struct win32_window
 {
-	win32_pixel_buffer pixel_buffer;
+	win32_pixel_buffer pixelBuffer;
 	win32_window_dimensions dimensions;
 	HWND handle;
 	HINSTANCE instance;
@@ -32,6 +32,7 @@ struct win32_engine_code
 {
 	HMODULE dll;
 	FILETIME writeTime;
+
 	update_and_render *UpdateAndRender;
 
 	bool isValid;

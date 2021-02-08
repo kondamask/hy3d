@@ -1,28 +1,5 @@
 #include "hy3d_engine.h"
 
-static inline void InitializeEngine(hy3d_engine &e, void *pixel_buffer_memory, i16 width, i16 height, i8 bytesPerPixel, i32 buffer_size)
-{
-    e.pixel_buffer = {};
-    e.pixel_buffer.memory = pixel_buffer_memory;
-    e.pixel_buffer.width = width;
-    e.pixel_buffer.height = height;
-    e.pixel_buffer.bytesPerPixel = bytesPerPixel;
-    e.pixel_buffer.size = width * height * bytesPerPixel;
-
-    e.input = {};
-
-    e.space.left = -1.0f;
-    e.space.right = 1.0f;
-    e.space.top = 1.0f;
-    e.space.bottom = -1.0f;
-    e.space.width = e.space.right - e.space.left;
-    e.space.height = e.space.top - e.space.bottom;
-    e.screenTransformer.xFactor = width / e.space.width;
-    e.screenTransformer.yFactor = height / e.space.height;
-
-    e.frameStart = std::chrono::steady_clock::now();
-}
-
 static void PutPixel(pixel_buffer *pixel_buffer, i16 x, i16 y, Color c)
 {
     // Pixel 32 bits
@@ -198,30 +175,30 @@ static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
 static void DrawBufferBounds()
 {
     Color c{0, 255, 0};
-    u32 *pixel = (u32 *)pixel_buffer.memory;
-    for (int y = 0; y < pixel_buffer.height; y++)
+    u32 *pixel = (u32 *)pixelBuffer.memory;
+    for (int y = 0; y < pixelBuffer.height; y++)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
-        *(pixel + pixel_buffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
-        pixel += pixel_buffer.width;
+        *(pixel + pixelBuffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
+        pixel += pixelBuffer.width;
     }
-    pixel = (u32 *)pixel_buffer.memory + 1;
-    for (int x = 0; x < pixel_buffer.width - 1; x++)
+    pixel = (u32 *)pixelBuffer.memory + 1;
+    for (int x = 0; x < pixelBuffer.width - 1; x++)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
-        *(pixel + pixel_buffer.size / pixel_buffer.bytesPerPixel - pixel_buffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
+        *(pixel + pixelBuffer.size / pixelBuffer.bytesPerPixel - pixelBuffer.width - 1) = (c.r << 16) | (c.g << 8) | (c.b);
         pixel++;
     }
 }
 
 static void DrawTest(int x_in, int y_in)
 {
-    u32 *pixel = (u32 *)pixel_buffer.memory;
-    int strechX = pixel_buffer.width / 255;
-    int strechY = pixel_buffer.height / 255;
-    for (int y = 0; y < pixel_buffer.height; y++)
+    u32 *pixel = (u32 *)pixelBuffer.memory;
+    int strechX = pixelBuffer.width / 255;
+    int strechY = pixelBuffer.height / 255;
+    for (int y = 0; y < pixelBuffer.height; y++)
     {
-        for (int x = 0; x < pixel_buffer.width; x++)
+        for (int x = 0; x < pixelBuffer.width; x++)
         {
             uint8_t r = (uint8_t)((x + x_in) / strechX);
             uint8_t g = (uint8_t)(x / strechX);
@@ -287,13 +264,12 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
         state->cubeOrientation.thetaX = 0.0f;
         state->cubeOrientation.thetaY = 0.0f;
         state->cubeOrientation.thetaZ = 0.0f;
-
-        f32 offsetZ = 1.0f * dt;
-        if (e.input.keyboard.isPressed[Z])
-            state->cubeZ -= offsetZ;
-        if (e.input.keyboard.isPressed[X])
-            state->cubeZ += offsetZ;
     }
+    f32 offsetZ = 1.0f * dt;
+    if (e.input.keyboard.isPressed[Z])
+        state->cubeZ -= offsetZ;
+    if (e.input.keyboard.isPressed[X])
+        state->cubeZ += offsetZ;
     state->drawLines = e.input.keyboard.isPressed[CTRL];
 
     // NOTE:  RENDER
@@ -346,7 +322,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
                 state->cube.vertices[state->cube.triangles[i + 1]],
                 state->cube.vertices[state->cube.triangles[i + 2]],
             };
-            DrawTriangle(&e.pixel_buffer, t, state->cube.colors[i/6]);
+            DrawTriangle(&e.pixelBuffer, t, state->cube.colors[i / 6]);
         }
     }
 
@@ -357,7 +333,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
         {
             vec3 a = state->cube.vertices[state->cube.lines[i]];
             vec3 b = state->cube.vertices[state->cube.lines[i + 1]];
-            DrawLine(&e.pixel_buffer, a, b, {255, 255, 255});
+            DrawLine(&e.pixelBuffer, a, b, {255, 255, 255});
         }
     }
 
@@ -365,6 +341,6 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     {
         vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-        DrawLine(&e.pixel_buffer, a, b, {255, 150, 0});
+        DrawLine(&e.pixelBuffer, a, b, {255, 250, 0});
     }
 }

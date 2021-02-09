@@ -58,6 +58,13 @@ struct pixel_buffer
     i32 size;
 };
 
+struct loaded_bitmap
+{
+    i32 width;
+    i32 height;
+    u32 *pixels;
+};
+
 struct engine_state
 {
     orientation cubeOrientation;
@@ -65,23 +72,10 @@ struct engine_state
     bool drawLines;
     axis3d cubeAxis;
     cube cube;
-};
 
-#pragma pack(push, 1)
-struct bitmap_header
-{
-    u16 FileType;
-    u16 FileSize;
-    u16 Reserved1;
-    u16 Reserved2;
-    u32 BitmapOffset;
-    u32 Size;
-    i32 Width;
-    i32 Height;
-    u16 Planes;
-    u16 BitsPerPixel;
+    loaded_bitmap wall;
+    loaded_bitmap peepo;
 };
-#pragma pack(pop)
 
 // TODO: add Z later
 // NOTE:

@@ -62,34 +62,6 @@ static void DrawLine(pixel_buffer *pixel_buffer, vec3 a, vec3 b, Color c)
     }
 }
 
-/*  NOTE:
-	How a triangle might look like:
-
-	Case 1:
-	             v0
-	             *
-		      * *
-		   *   *
-	    *     *
-  v1 *       *
-	  *     *
-	   *   *
-	    * *
-		 * v2
-
-	Case 2:
-	 v0 *
-	 	 *  *
-		  *    *
-		   *       *
-		    *         *
-			 *           * v1
-			  *        *
-			   *     *
-			    *  *
-				 * v2
-*/
-
 static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
 {
     // Sort by y: v0 is at the top, v2 at the bottom
@@ -210,21 +182,79 @@ static void DrawTest(int x_in, int y_in)
 }
 #endif
 
-/*
-static u32* LoadBitmap(debug_platform_read_entire_file *ReadEntireFile, char *FileName)
+#pragma pack(push, 1)
+struct bitmap_header
 {
-    uint32 *Result = 0;
-    debug_read_file_result ReadResult = ReadEntireFile(Thread, FileName);    
-    if(ReadResult.ContentsSize != 0)
-    {
-        bitmap_header *Header = (bitmap_header *)ReadResult.Contents;
-        uint32 *Pixels = (uint32 *)((uint8 *)ReadResult.Contents + Header->BitmapOffset);
-        Result = Pixels;
-    }
+    u16 fileType;
+    u32 fileSize;
+    u16 reserved1;
+    u16 reserved2;
+    u32 bitmapOffset;
+    u32 size;
+    i32 width;
+    i32 height;
+    u16 planes;
+    u16 bitsPerPixel;
+    u32 compression;
+    u32 sizeOfBitmap;
+    i32 horzResolution;
+    i32 vertResolution;
+    u32 colorsUsed;
+    u32 colorsImportant;
 
-    return(Result);
+    u32 redMask;
+    u32 greenMask;
+    u32 blueMask;
+};
+#pragma pack(pop)
+
+static loaded_bitmap LoadBitmap(debug_read_file *ReadFile, char *filename)
+{
+    loaded_bitmap result = {};
+
+    // Byte order in memory is AA BB GG RR, bottom up.
+    // In little endian -> 0xRRGGBBAA
+
+    debug_read_file_result file = ReadFile(filename);
+    if (file.size != 0)
+    {
+        bitmap_header *header = (bitmap_header *)file.content;
+        u8 *address = (u8 *)file.content + header->bitmapOffset;
+        u32 *pixels = (u32 *)address;
+        result.pixels = pixels;
+        result.height = header->height;
+        result.width = header->width;
+
+        //u32 *sourceDest = pixels;
+        //for (i32 y = 0; y < header->height; ++y)
+        //{
+        //    for (i32 x = 0; x < header->width; ++x)
+        //    {
+        //        *sourceDest = (*sourceDest >> 8) | (*sourceDest << 24);
+        //        ++sourceDest;
+        //    }
+        //}
+    }
+    return result;
 }
-*/
+
+static void DrawBitmap(loaded_bitmap *bmp, pixel_buffer *pixelBuffer)
+{
+    u32 *source = bmp->pixels;
+    u32 *dest = (u32 *)pixelBuffer->memory;
+    for (i32 y = 0; y < bmp->height; y++)
+    {
+        for (i32 x = 0; x < bmp->width; x++)
+        {
+            i8 alpha = *source >> 24;
+            if (alpha != 0)
+                *dest = *source;
+            dest++;
+            source++;
+        }
+        dest += pixelBuffer->width - bmp->width;
+    }
+}
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 {
@@ -341,6 +371,10 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     {
         vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-        DrawLine(&e.pixelBuffer, a, b, {255, 250, 0});
+        DrawLine(&e.pixelBuffer, a, b, {100, 100, 0});
     }
+
+    // TEST:  Draw bitmap
+    state->peepo = LoadBitmap(memory->DEBUGReadFile, "peepo.bmp");
+    DrawBitmap(&state->peepo, &e.pixelBuffer);
 }

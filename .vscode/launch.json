@@ -6,7 +6,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}\\build\\hy3d.exe",
-            "cwd": "${workspaceFolder}\\build",
+            "cwd": "${workspaceFolder}\\data",
             "symbolSearchPath": "${workspaceFolder}\\build",
             "logging": {
                 "moduleLoad": false

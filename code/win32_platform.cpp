@@ -25,9 +25,9 @@ DEBUG_READ_FILE(DEBUGReadFile)
 			result.size = (uint32_t)fileSize.QuadPart;
 
 			result.content = VirtualAlloc(0, result.size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-			DWORD bytesRead;
 			if (result.content)
 			{
+				DWORD bytesRead;
 				if (ReadFile(fileHandle, result.content, result.size, &bytesRead, 0) &&
 					result.size == bytesRead)
 				{
@@ -458,7 +458,7 @@ static FILETIME Win32GetWriteTime(char *filename)
 	return result;
 }
 
-static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilename)
+static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilename, char *sourceFilenameCopy)
 {
 	engineCode->writeTime = Win32GetWriteTime(sourceFilename);
 
@@ -467,9 +467,8 @@ static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilen
 	// WE GET ERROR CODE 32: The process cannot access the file because it is being used by another process.
 	// IS THIS EVEN FIXABLE?
 	Sleep(500);
-	BOOL result = CopyFileA(sourceFilename, "hy3d_engine_copy.dll", FALSE);
-	DWORD error = GetLastError();
-	engineCode->dll = LoadLibraryA("hy3d_engine_copy.dll");
+	CopyFileA(sourceFilename, sourceFilenameCopy, FALSE);
+	engineCode->dll = LoadLibraryA(sourceFilenameCopy);
 	if (engineCode->dll)
 	{
 		engineCode->UpdateAndRender = (update_and_render *)GetProcAddress(engineCode->dll, "UpdateAndRender");
@@ -485,7 +484,7 @@ static void Win32UnloadEngineCode(win32_engine_code *engineCode)
 {
 	if (engineCode->dll)
 	{
-		BOOL result = FreeLibrary(engineCode->dll);
+		FreeLibrary(engineCode->dll);
 		engineCode->dll = 0;
 	}
 	engineCode->isValid = false;
@@ -513,16 +512,19 @@ int CALLBACK WinMain(
 			engine.Initialize(window.pixelBuffer.memory,
 							  window.pixelBuffer.width, window.pixelBuffer.height,
 							  window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
-			Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
+
+			char *sourceDLLPath = "W:\\hy3d\\build\\hy3d_engine.dll";
+			char *sourceDLLCopyPath = "W:\\hy3d\\build\\hy3d_engine_copy.dll";
+			Win32LoadEngineCode(&engineCode, sourceDLLPath, sourceDLLCopyPath);
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))
 			{
-				FILETIME newWriteTime = Win32GetWriteTime("hy3d_engine.dll");
+				FILETIME newWriteTime = Win32GetWriteTime(sourceDLLPath);
 				if (CompareFileTime(&newWriteTime, &engineCode.writeTime) == 1)
 				{
 					Win32UnloadEngineCode(&engineCode);
-					Win32LoadEngineCode(&engineCode, "hy3d_engine.dll");
+					Win32LoadEngineCode(&engineCode, sourceDLLPath, sourceDLLCopyPath);
 				}
 				engineCode.UpdateAndRender(engine, &engineMemory);
 				Win32Update(window);

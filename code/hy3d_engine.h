@@ -73,8 +73,7 @@ struct engine_state
     axis3d cubeAxis;
     cube cube;
 
-    loaded_bitmap wall;
-    loaded_bitmap peepo;
+    loaded_bitmap background;
 };
 
 // TODO: add Z later

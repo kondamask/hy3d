@@ -1,30 +1,30 @@
 #include "hy3d_engine.h"
 
-static void PutPixel(pixel_buffer *pixel_buffer, i16 x, i16 y, Color c)
+static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, Color c)
 {
     // Pixel 32 bits
     // Memory:      BB GG RR xx
     // Register:    xx RR GG BB
 
-    u32 *pixel = (u32 *)pixel_buffer->memory + y * pixel_buffer->width + x;
+    u32 *pixel = (u32 *)pixelBuffer->memory + y * pixelBuffer->width + x;
     bool isInBuffer =
         y >= 0 &&
-        y < pixel_buffer->height &&
-        x >= 0 &&                // left
-        x < pixel_buffer->width; // right
+        y < pixelBuffer->height &&
+        x >= 0 &&               // left
+        x < pixelBuffer->width; // right
     if (isInBuffer)
     {
         *pixel = (c.r << 16) | (c.g << 8) | (c.b);
     }
 }
 
-static void DrawLine(pixel_buffer *pixel_buffer, vec3 a, vec3 b, Color c)
+static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, Color c)
 {
     f32 dx = b.x - a.x;
     f32 dy = b.y - a.y;
     if (dx == 0.0f && dy == 0.0f)
     {
-        PutPixel(pixel_buffer, (i16)a.x, (i16)a.y, c);
+        PutPixel(pixelBuffer, (i16)a.x, (i16)a.y, c);
     }
     else if (fabsf(dy) >= fabsf(dx))
     {
@@ -40,7 +40,7 @@ static void DrawLine(pixel_buffer *pixel_buffer, vec3 a, vec3 b, Color c)
              y < b.y;
              y += 1.0f, x += m)
         {
-            PutPixel(pixel_buffer, (i16)x, (i16)y, c);
+            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
         }
     }
     else
@@ -57,12 +57,12 @@ static void DrawLine(pixel_buffer *pixel_buffer, vec3 a, vec3 b, Color c)
              x < b.x;
              x += 1.0f, y += m)
         {
-            PutPixel(pixel_buffer, (i16)x, (i16)y, c);
+            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
         }
     }
 }
 
-static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
+static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
 {
     // Sort by y: v0 is at the top, v2 at the bottom
     if (t.v0.y < t.v1.y)
@@ -115,7 +115,7 @@ static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
 
         for (i16 x = xLeft; x < xRight; x++)
         {
-            PutPixel(pixel_buffer, x, y, c);
+            PutPixel(pixelBuffer, x, y, c);
         }
     }
 
@@ -137,7 +137,7 @@ static void DrawTriangle(pixel_buffer *pixel_buffer, triangle t, Color c)
         xRight = (i16)ceilf(xRightF - 0.5f);
         for (i16 x = xLeft; x < xRight; x++)
         {
-            PutPixel(pixel_buffer, x, y, c);
+            PutPixel(pixelBuffer, x, y, c);
         }
     }
 }
@@ -216,7 +216,7 @@ static loaded_bitmap LoadBitmap(debug_read_file *ReadFile, char *filename)
     // In little endian -> 0xRRGGBBAA
 
     debug_read_file_result file = ReadFile(filename);
-    if (file.size != 0)
+    if (file.size != 0 && file.content)
     {
         bitmap_header *header = (bitmap_header *)file.content;
         u8 *address = (u8 *)file.content + header->bitmapOffset;
@@ -303,6 +303,12 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     state->drawLines = e.input.keyboard.isPressed[CTRL];
 
     // NOTE:  RENDER
+    if (!state->background.pixels)
+    {
+        state->background = LoadBitmap(memory->DEBUGReadFile, "city_bg_purple.bmp");
+    }
+    DrawBitmap(&state->background, &e.pixelBuffer);
+
     state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
     state->cube = MakeCube(1.0f, state->cubeOrientation);
 
@@ -375,6 +381,6 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     }
 
     // TEST:  Draw bitmap
-    state->peepo = LoadBitmap(memory->DEBUGReadFile, "peepo.bmp");
-    DrawBitmap(&state->peepo, &e.pixelBuffer);
+    //state->peepo = LoadBitmap(memory->DEBUGReadFile, "peepo.bmp");
+    //DrawBitmap(&state->peepo, &e.pixelBuffer);
 }

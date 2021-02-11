@@ -2,10 +2,12 @@
 
 # A simple 3d engine in the making. 
 
-## Compile with Microsoft C++ (cl) compiler:
+## Compile with msvc:
     
     1. cd into hy3d folder
     2. run .\code\build 
+    3. exe, pdbs and dlls are in \build
+    4. working directory is \data
 
 ## Latest Preview:
-![Alt Text](previews/2_100221.gif "Preview gif")
+![Alt Text](previews/3_120221.gif "Preview gif")

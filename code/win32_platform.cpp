@@ -167,7 +167,7 @@ static LRESULT Win32MainWindowProc(HWND handle, UINT message, WPARAM wParam, LPA
 	case WM_MOUSELEAVE:
 	case WM_KILLFOCUS:
 	{
-		assert("We got an input message from somewhere else and we did not handle it properly");
+		ASSERT("We got an input message from somewhere else and we did not handle it properly");
 	}
 
 	default:
@@ -416,17 +416,19 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 			input.mouse.rightIsPressed = false;
 			break;
 		case WM_MOUSEWHEEL:
-			input.mouse.wheelDelta += GET_WHEEL_DELTA_WPARAM(message.wParam);
-			while (input.mouse.wheelDelta >= WHEEL_DELTA)
-			{
-				// wheel up action
-				input.mouse.wheelDelta -= WHEEL_DELTA;
-			}
-			while (input.mouse.wheelDelta <= -WHEEL_DELTA)
-			{
-				// wheel down action
-				input.mouse.wheelDelta += WHEEL_DELTA;
-			}
+			input.mouse.SetWheelDelta(input.mouse.WheelDelta() + GET_WHEEL_DELTA_WPARAM(message.wParam));
+			//while (input.mouse.wheelDelta >= WHEEL_DELTA)
+			//{
+			//	// wheel up action
+			//	input.mouse.wheelDelta -= WHEEL_DELTA;
+			//	input.mouse.wheelUp = true;
+			//}
+			//while (input.mouse.wheelDelta <= -WHEEL_DELTA)
+			//{
+			//	// wheel down action
+			//	input.mouse.wheelDelta += WHEEL_DELTA;
+			//	input.mouse.wheelDown = true;
+			//}
 		case WM_MOUSELEAVE:
 			POINTS p = MAKEPOINTS(message.lParam);
 			input.mouse.SetPos(p.x, p.y);
@@ -501,6 +503,8 @@ int CALLBACK WinMain(
 
 	win32_window window;
 	Win32InitializeWindow(window, 512, 512, "HY3D");
+	// TODO:  We don't have proper focus of the window upon creation.
+	// We can't move it unless we alt-tab from it.
 	if (window.handle)
 	{
 		engine_memory engineMemory;

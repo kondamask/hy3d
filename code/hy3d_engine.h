@@ -166,16 +166,31 @@ struct mouse
 {
     i16 x;
     i16 y;
-    f32 wheelDelta;
     bool isInWindow;
     bool leftIsPressed;
     bool rightIsPressed;
+    bool wheelUp;
 
     inline void SetPos(i16 x_, i16 y_)
     {
         x = x_;
         y = y_;
     }
+
+    i32 WheelDelta()
+    {
+        i32 result = wheelDelta;
+        wheelDelta = 0;
+        return result;
+    }
+
+    void SetWheelDelta(i32 delta)
+    {
+        wheelDelta = delta;
+    }
+
+private:
+    i32 wheelDelta;
 };
 
 struct engine_input

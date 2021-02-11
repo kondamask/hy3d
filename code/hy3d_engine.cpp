@@ -229,6 +229,8 @@ static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *file
             _BitScanForward((unsigned long *)&greenShift, header->greenMask);
             _BitScanForward((unsigned long *)&blueShift, header->blueMask);
             _BitScanForward((unsigned long *)&alphaShift, alphaMask);
+            if(alphaShift == 24 && redShift == 16 && greenShift == 8 && blueShift == 0)
+                return;
             u32 *dest = pixels;
             for (i32 y = 0; y < header->height; y++)
             {
@@ -311,7 +313,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 
         LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
         state->background.opacity = 1.7f;
-        LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d.bmp");
+        LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d_gimp.bmp");
         state->logo.opacity = 1.0f;
     }
 
@@ -331,13 +333,11 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     if (e.input.keyboard.isPressed[W])
         state->cubeOrientation.thetaZ -= rotSpeed;
 
-    f32 opacity = (f32)e.input.mouse.y / (f32)e.pixelBuffer.height;
-    if (opacity > 1.0f)
-        opacity = 1.0f;
-    if (opacity < 0.0f)
-        opacity = 0.0f;
-    state->logo.opacity = opacity;
-    state->background.opacity = opacity;
+    state->logo.opacity += (f32)e.input.mouse.WheelDelta() * 0.0005f;
+    if (state->logo.opacity > 1.0f)
+        state->logo.opacity = 1.0f;
+    if (state->logo.opacity < 0.0f)
+        state->logo.opacity = 0.0f;
 
     if (e.input.keyboard.isPressed[R])
     {
@@ -427,7 +427,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     }
 
     // TEST:  Draw bitmap
-    DrawBitmap(&state->logo, 464, 464, &e.pixelBuffer);
+    DrawBitmap(&state->logo, e.pixelBuffer.width - state->logo.width, 0, &e.pixelBuffer);
 
     state->worldAxis = MakeAxis3D({-3.9f, -3.9f, 2.0f}, 0.3f, {0.0f, 0.0f, 0.0f});
     for (int i = 0; i < state->worldAxis.nVertices; i++)

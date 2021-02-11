@@ -374,6 +374,7 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 		case WM_MOUSEMOVE:
 		{
 			POINTS p = MAKEPOINTS(message.lParam);
+			p.y = window.pixelBuffer.height - p.y;
 			bool isInWindow =
 				p.x >= 0 && p.x < window.dimensions.width &&
 				p.y >= 0 && p.y < window.dimensions.height;

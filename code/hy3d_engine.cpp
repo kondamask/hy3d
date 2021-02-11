@@ -1,4 +1,5 @@
 #include "hy3d_engine.h"
+#include <intrin.h>
 
 static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, Color c)
 {
@@ -208,47 +209,83 @@ struct bitmap_header
 };
 #pragma pack(pop)
 
-static loaded_bitmap LoadBitmap(debug_read_file *ReadFile, char *filename)
+static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *filename)
 {
-    loaded_bitmap result = {};
-
-    // Byte order in memory is AA BB GG RR, bottom up.
-    // In little endian -> 0xRRGGBBAA
-
     debug_read_file_result file = ReadFile(filename);
     if (file.size != 0 && file.content)
     {
         bitmap_header *header = (bitmap_header *)file.content;
         u8 *address = (u8 *)file.content + header->bitmapOffset;
         u32 *pixels = (u32 *)address;
-        result.pixels = pixels;
-        result.height = header->height;
-        result.width = header->width;
+        bmp->pixels = pixels;
+        bmp->height = header->height;
+        bmp->width = header->width;
 
-        //u32 *sourceDest = pixels;
-        //for (i32 y = 0; y < header->height; ++y)
-        //{
-        //    for (i32 x = 0; x < header->width; ++x)
-        //    {
-        //        *sourceDest = (*sourceDest >> 8) | (*sourceDest << 24);
-        //        ++sourceDest;
-        //    }
-        //}
+        if (header->compression == 3)
+        {
+            u32 alphaMask = ~(header->redMask | header->greenMask | header->blueMask);
+            u32 redShift, greenShift, blueShift, alphaShift;
+            _BitScanForward((unsigned long *)&redShift, header->redMask);
+            _BitScanForward((unsigned long *)&greenShift, header->greenMask);
+            _BitScanForward((unsigned long *)&blueShift, header->blueMask);
+            _BitScanForward((unsigned long *)&alphaShift, alphaMask);
+            u32 *dest = pixels;
+            for (i32 y = 0; y < header->height; y++)
+            {
+                for (i32 x = 0; x < header->width; x++)
+                {
+                    u32 c = *dest;
+                    *dest++ = ((((c >> alphaShift) & 0xFF) << 24) |
+                               (((c >> redShift) & 0xFF) << 16) |
+                               (((c >> greenShift) & 0xFF) << 8) |
+                               (((c >> blueShift) & 0xFF) << 0));
+                }
+            }
+        }
     }
-    return result;
 }
 
-static void DrawBitmap(loaded_bitmap *bmp, pixel_buffer *pixelBuffer)
+static void DrawBitmap(loaded_bitmap *bmp, i32 xPos, i32 yPos, pixel_buffer *pixelBuffer)
 {
-    u32 *source = bmp->pixels;
-    u32 *dest = (u32 *)pixelBuffer->memory;
-    for (i32 y = 0; y < bmp->height; y++)
+    i32 minX = xPos;
+    i32 minY = yPos;
+    i32 maxX = xPos + bmp->width;
+    i32 maxY = yPos + bmp->height;
+
+    if (minX < 0)
+        minX = 0;
+    if (minY < 0)
+        minY = 0;
+    if (maxX > pixelBuffer->width)
+        maxX = pixelBuffer->width;
+    if (maxY > pixelBuffer->height)
+        maxY = pixelBuffer->height;
+
+    u32 *source = (u32 *)bmp->pixels;
+    u32 *dest = (u32 *)pixelBuffer->memory + minY * pixelBuffer->width + minX;
+    for (i32 y = minY; y < maxY; y++)
     {
-        for (i32 x = 0; x < bmp->width; x++)
+        for (i32 x = minX; x < maxX; x++)
         {
-            i8 alpha = *source >> 24;
-            if (alpha != 0)
-                *dest = *source;
+            f32 A = (f32)((*source >> 24) & 0xFF) / 255.0f;
+            A *= bmp->opacity;
+            f32 SR = (f32)((*source >> 16) & 0xFF);
+            f32 SG = (f32)((*source >> 8) & 0xFF);
+            f32 SB = (f32)((*source >> 0) & 0xFF);
+
+            f32 DR = (f32)((*dest >> 16) & 0xFF);
+            f32 DG = (f32)((*dest >> 8) & 0xFF);
+            f32 DB = (f32)((*dest >> 0) & 0xFF);
+
+            // TODO(casey): Someday, we need to talk about premultiplied alpha!
+            // (this is not premultiplied alpha)
+            f32 R = (1.0f - A) * DR + A * SR;
+            f32 G = (1.0f - A) * DG + A * SG;
+            f32 B = (1.0f - A) * DB + A * SB;
+
+            *dest = (((u32)(R + 0.5f) << 16) |
+                     ((u32)(G + 0.5f) << 8) |
+                     ((u32)(B + 0.5f) << 0));
             dest++;
             source++;
         }
@@ -271,6 +308,11 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
         state->cubeZ = 2.0f;
         state->drawLines = false;
         memory->isInitialized = true;
+
+        LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
+        state->background.opacity = 1.7f;
+        LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d.bmp");
+        state->logo.opacity = 1.0f;
     }
 
     // NOTE:  UPDATE
@@ -289,6 +331,14 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     if (e.input.keyboard.isPressed[W])
         state->cubeOrientation.thetaZ -= rotSpeed;
 
+    f32 opacity = (f32)e.input.mouse.y / (f32)e.pixelBuffer.height;
+    if (opacity > 1.0f)
+        opacity = 1.0f;
+    if (opacity < 0.0f)
+        opacity = 0.0f;
+    state->logo.opacity = opacity;
+    state->background.opacity = opacity;
+
     if (e.input.keyboard.isPressed[R])
     {
         state->cubeOrientation.thetaX = 0.0f;
@@ -303,11 +353,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     state->drawLines = e.input.keyboard.isPressed[CTRL];
 
     // NOTE:  RENDER
-    if (!state->background.pixels)
-    {
-        state->background = LoadBitmap(memory->DEBUGReadFile, "city_bg_purple.bmp");
-    }
-    DrawBitmap(&state->background, &e.pixelBuffer);
+    DrawBitmap(&state->background, 0, 0, &e.pixelBuffer);
 
     state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
     state->cube = MakeCube(1.0f, state->cubeOrientation);
@@ -381,6 +427,21 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     }
 
     // TEST:  Draw bitmap
-    //state->peepo = LoadBitmap(memory->DEBUGReadFile, "peepo.bmp");
-    //DrawBitmap(&state->peepo, &e.pixelBuffer);
+    DrawBitmap(&state->logo, 464, 464, &e.pixelBuffer);
+
+    state->worldAxis = MakeAxis3D({-3.9f, -3.9f, 2.0f}, 0.3f, {0.0f, 0.0f, 0.0f});
+    for (int i = 0; i < state->worldAxis.nVertices; i++)
+    {
+        state->worldAxis.vertices[i] += {0.0f, 0.0f, state->cubeZ};
+    }
+    for (int i = 0; i < state->worldAxis.nVertices; i++)
+    {
+        e.screenTransformer.Transform(state->worldAxis.vertices[i]);
+    }
+    for (int i = 0; i < state->worldAxis.nLinesVertices; i += 2)
+    {
+        vec3 a = state->worldAxis.vertices[state->worldAxis.lines[i]];
+        vec3 b = state->worldAxis.vertices[state->worldAxis.lines[i + 1]];
+        DrawLine(&e.pixelBuffer, a, b, {255, 255, 255});
+    }
 }

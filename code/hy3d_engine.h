@@ -62,6 +62,7 @@ struct loaded_bitmap
 {
     i32 width;
     i32 height;
+    f32 opacity;
     u32 *pixels;
 };
 
@@ -73,7 +74,10 @@ struct engine_state
     axis3d cubeAxis;
     cube cube;
 
+    axis3d worldAxis;
+
     loaded_bitmap background;
+    loaded_bitmap logo;
 };
 
 // TODO: add Z later

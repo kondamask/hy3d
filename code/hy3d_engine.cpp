@@ -218,8 +218,8 @@ static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *file
         u8 *address = (u8 *)file.content + header->bitmapOffset;
         u32 *pixels = (u32 *)address;
         bmp->pixels = pixels;
-        bmp->height = header->height;
-        bmp->width = header->width;
+        bmp->height = (i16)header->height;
+        bmp->width = (i16)header->width;
 
         if (header->compression == 3)
         {
@@ -229,7 +229,7 @@ static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *file
             _BitScanForward((unsigned long *)&greenShift, header->greenMask);
             _BitScanForward((unsigned long *)&blueShift, header->blueMask);
             _BitScanForward((unsigned long *)&alphaShift, alphaMask);
-            if(alphaShift == 24 && redShift == 16 && greenShift == 8 && blueShift == 0)
+            if (alphaShift == 24 && redShift == 16 && greenShift == 8 && blueShift == 0)
                 return;
             u32 *dest = pixels;
             for (i32 y = 0; y < header->height; y++)
@@ -253,17 +253,32 @@ static void DrawBitmap(loaded_bitmap *bmp, i32 xPos, i32 yPos, pixel_buffer *pix
     i32 minY = yPos;
     i32 maxX = xPos + bmp->width;
     i32 maxY = yPos + bmp->height;
+    i32 clipLeft = 0;
+    i32 clipTop = 0;
+    i32 clipRight = 0;
+    i32 clipBottom = 0;
 
     if (minX < 0)
+    {
+        clipLeft -= minX;
         minX = 0;
+    }
     if (minY < 0)
+    {
+        clipBottom -= minY;
         minY = 0;
+    }
     if (maxX > pixelBuffer->width)
+    {
+        clipRight = maxX - pixelBuffer->width;
         maxX = pixelBuffer->width;
+    }
     if (maxY > pixelBuffer->height)
+    {
+        clipTop = maxY - pixelBuffer->height;
         maxY = pixelBuffer->height;
-
-    u32 *source = (u32 *)bmp->pixels;
+    }
+    u32 *source = (u32 *)bmp->pixels + clipLeft + clipBottom * bmp->width;
     u32 *dest = (u32 *)pixelBuffer->memory + minY * pixelBuffer->width + minX;
     for (i32 y = minY; y < maxY; y++)
     {
@@ -291,7 +306,8 @@ static void DrawBitmap(loaded_bitmap *bmp, i32 xPos, i32 yPos, pixel_buffer *pix
             dest++;
             source++;
         }
-        dest += pixelBuffer->width - bmp->width;
+        dest += pixelBuffer->width - bmp->width + clipLeft + clipRight; // - bmp->width + maxXsource;
+        source += clipLeft + clipRight;
     }
 }
 
@@ -319,19 +335,31 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 
     // NOTE:  UPDATE
     // Cube Control
-    f32 rotSpeed = 1.5f * dt;
+    f32 speed = 1.5f * dt;
     if (e.input.keyboard.isPressed[UP])
-        state->cubeOrientation.thetaX += rotSpeed;
+    {
+        state->logo.posY += speed * 100.0f;
+        state->cubeOrientation.thetaX += speed;
+    }
     if (e.input.keyboard.isPressed[DOWN])
-        state->cubeOrientation.thetaX -= rotSpeed;
+    {
+        state->logo.posY -= speed * 100.0f;
+        state->cubeOrientation.thetaX -= speed;
+    }
     if (e.input.keyboard.isPressed[LEFT])
-        state->cubeOrientation.thetaY += rotSpeed;
+    {
+        state->logo.posX -= speed * 100.0f;
+        state->cubeOrientation.thetaY += speed;
+    }
     if (e.input.keyboard.isPressed[RIGHT])
-        state->cubeOrientation.thetaY -= rotSpeed;
+    {
+        state->logo.posX += speed * 100.0f;
+        state->cubeOrientation.thetaY -= speed;
+    }
     if (e.input.keyboard.isPressed[Q])
-        state->cubeOrientation.thetaZ += rotSpeed;
+        state->cubeOrientation.thetaZ += speed;
     if (e.input.keyboard.isPressed[W])
-        state->cubeOrientation.thetaZ -= rotSpeed;
+        state->cubeOrientation.thetaZ -= speed;
 
     state->logo.opacity += (f32)e.input.mouse.WheelDelta() * 0.0005f;
     if (state->logo.opacity > 1.0f)
@@ -354,6 +382,7 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 
     // NOTE:  RENDER
     DrawBitmap(&state->background, 0, 0, &e.pixelBuffer);
+    DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e.pixelBuffer);
 
     state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
     state->cube = MakeCube(1.0f, state->cubeOrientation);
@@ -425,9 +454,6 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
         DrawLine(&e.pixelBuffer, a, b, {100, 100, 0});
     }
-
-    // TEST:  Draw bitmap
-    DrawBitmap(&state->logo, e.pixelBuffer.width - state->logo.width, 0, &e.pixelBuffer);
 
     state->worldAxis = MakeAxis3D({-3.9f, -3.9f, 2.0f}, 0.3f, {0.0f, 0.0f, 0.0f});
     for (int i = 0; i < state->worldAxis.nVertices; i++)

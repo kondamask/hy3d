@@ -60,8 +60,10 @@ struct pixel_buffer
 
 struct loaded_bitmap
 {
-    i32 width;
-    i32 height;
+    i16 width;
+    i16 height;
+    f32 posX;
+    f32 posY;
     f32 opacity;
     u32 *pixels;
 };

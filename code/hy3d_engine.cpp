@@ -81,13 +81,13 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
     else if (t.v1.y == t.v2.y && t.v1.x > t.v2.x)
         std::swap(t.v1, t.v2);
 
-    f32 alphaSplit = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
-    vec3 split = t.v0 + (t.v2 - t.v0) * alphaSplit;
+    f32 alpha = (t.v1.y - t.v0.y) / (t.v2.y - t.v0.y);
+    vec3 split = lerp(t.v0, t.v1, t.v2, alpha);
     bool isLeftSideMajor = t.v1.x > split.x;
 
-    i16 yTop = (i16)ceilf(t.v0.y - 0.5f);
-    i16 ySplit = (i16)ceilf(split.y - 0.5f);
-    i16 yBottom = (i16)ceilf(t.v2.y - 0.5f);
+    i16 yTop = RoundDownF32toI16(t.v0.y);
+    i16 ySplit = RoundDownF32toI16(split.y);
+    i16 yBottom = RoundDownF32toI16(t.v2.y);
 
     f32 xLeftF, xRightF;
     i16 xLeft, xRight;
@@ -98,9 +98,9 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
     f32 slope02 = -(t.v2.x - t.v0.x) / (t.v2.y - t.v0.y);
 
     // Top Half | Flat Bottom Triangle
+    f32 slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
     for (i16 y = yTop; y > ySplit; y--)
     {
-        f32 slope01 = -(t.v1.x - t.v0.x) / (t.v1.y - t.v0.y);
         if (isLeftSideMajor)
         {
             xLeftF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
@@ -111,8 +111,8 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
             xLeftF = slope01 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
             xRightF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
         }
-        xLeft = (i16)ceilf(xLeftF - 0.5f);
-        xRight = (i16)ceilf(xRightF - 0.5f);
+        xLeft = RoundDownF32toI16(xLeftF);
+        xRight = RoundDownF32toI16(xRightF);
 
         for (i16 x = xLeft; x < xRight; x++)
         {
@@ -121,9 +121,9 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
     }
 
     //Bottom Half | Flat Top
+    f32 slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
     for (i16 y = ySplit; y > yBottom; y--)
     {
-        f32 slope12 = -(t.v2.x - t.v1.x) / (t.v2.y - t.v1.y);
         if (isLeftSideMajor)
         {
             xLeftF = slope02 * (t.v0.y - (f32)y + 0.5f) + t.v0.x;
@@ -139,6 +139,140 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
         for (i16 x = xLeft; x < xRight; x++)
         {
             PutPixel(pixelBuffer, x, y, c);
+        }
+    }
+}
+
+static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, loaded_bitmap bmp)
+{
+    // Sort by y: v0 is at the top, v2 at the bottom
+    if (t.v0.pos.y < t.v1.pos.y)
+        std::swap(t.v0, t.v1);
+    if (t.v1.pos.y < t.v2.pos.y)
+        std::swap(t.v1, t.v2);
+    if (t.v0.pos.y < t.v1.pos.y)
+        std::swap(t.v0, t.v1);
+
+    // Sort by x:
+    // if v1.pos.y is the same as v0.pos.y, v1 should be to the right
+    // if v1.pos.y is the same as v2.pos.y, v1 it should be to the left
+    if (t.v0.pos.y == t.v1.pos.y && t.v0.pos.x > t.v1.pos.x)
+        std::swap(t.v0, t.v1);
+    else if (t.v1.pos.y == t.v2.pos.y && t.v1.pos.x > t.v2.pos.x)
+        std::swap(t.v1, t.v2);
+
+    // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
+    texel split = t.v0.interpolateTo(t.v1, t.v2);
+    i16 yTop = RoundDownF32toI16(t.v0.pos.y);
+    i16 ySplit = RoundDownF32toI16(split.pos.y);
+    i16 yBottom = RoundDownF32toI16(t.v2.pos.y);
+
+    // Check if hypotinus is on the left
+    bool isLeftSideMajor = t.v1.pos.x > split.pos.x;
+
+    // Calculate Slopes
+    // NOTE:
+    // It looks like that multiplication with the negative slope and the negative
+    // Dy give more precise results in comparison with the positive slope and Dy.
+    f32 slope01 = -(t.v1.pos.x - t.v0.pos.x) / (t.v1.pos.y - t.v0.pos.y);
+    f32 slope02 = -(t.v2.pos.x - t.v0.pos.x) / (t.v2.pos.y - t.v0.pos.y);
+    f32 slope12 = -(t.v2.pos.x - t.v1.pos.x) / (t.v2.pos.y - t.v1.pos.y);
+
+    f32 xLeftF, xRightF = 0.0f;
+    i16 xLeft, xRight;
+
+    vec2 texLeft = {};
+    vec2 texRight = {};
+    vec2 texStep01 = (t.v1.coord - t.v0.coord) / (t.v1.pos.y - t.v0.pos.y);
+    vec2 texStep02 = (t.v2.coord - t.v0.coord) / (t.v2.pos.y - t.v0.pos.y);
+    vec2 texStep12 = (t.v2.coord - t.v1.coord) / (t.v2.pos.y - t.v1.pos.y);
+    vec2 texScanStep = {};
+    vec2 texCoord = {};
+
+    // Top Half | Flat Bottom Triangle
+    texLeft = t.v0.coord;
+    texRight = t.v0.coord;
+    if (isLeftSideMajor)
+    {
+        for (i16 y = yTop; y > ySplit; y--)
+        {
+            xLeftF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope01 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                PutPixel(pixelBuffer, x, y, c);
+            }
+            texLeft -= texStep02;
+            texRight -= texStep01;
+        }
+    }
+    else
+    {
+        for (i16 y = yTop; y > ySplit; y--)
+        {
+            xLeftF = slope01 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                PutPixel(pixelBuffer, x, y, c);
+            }
+            texLeft -= texStep01;
+            texRight -= texStep02;
+        }
+    }
+
+    //Bottom Half | Flat Top
+    if (isLeftSideMajor)
+    {
+        texLeft = split.coord;
+        texRight = t.v1.coord;
+        for (i16 y = ySplit; y > yBottom; y--)
+        {
+            xLeftF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope12 * (t.v1.pos.y - (f32)y + 0.5f) + t.v1.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                PutPixel(pixelBuffer, x, y, c);
+            }
+            texLeft -= texStep02;
+            texRight -= texStep12;
+        }
+    }
+    else
+    {
+        texRight = split.coord;
+        texLeft = t.v1.coord;
+        for (i16 y = ySplit; y > yBottom; y--)
+        {
+            xLeftF = slope12 * (t.v1.pos.y - (f32)y + 0.5f) + t.v1.pos.x;
+            xRightF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                PutPixel(pixelBuffer, x, y, c);
+            }
+            texLeft -= texStep12;
+            texRight -= texStep02;
         }
     }
 }
@@ -311,80 +445,100 @@ static void DrawBitmap(loaded_bitmap *bmp, i32 xPos, i32 yPos, pixel_buffer *pix
     }
 }
 
-extern "C" UPDATE_AND_RENDER(UpdateAndRender)
+static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memory)
+{
+    e->input = {};
+
+    e->space.left = -1.0f;
+    e->space.right = 1.0f;
+    e->space.top = 1.0f;
+    e->space.bottom = -1.0f;
+    e->space.width = e->space.right - e->space.left;
+    e->space.height = e->space.top - e->space.bottom;
+    e->screenTransformer.xFactor = e->pixelBuffer.width / e->space.width;
+    e->screenTransformer.yFactor = e->pixelBuffer.width / e->space.height;
+
+    state->cubeOrientation = {0.0f, 0.0f, 0.0f};
+    state->cubeZ = 2.0f;
+    state->drawLines = false;
+
+    LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
+    state->background.opacity = 1.0f;
+    LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d_gimp.bmp");
+    state->logo.opacity = 0.3f;
+    state->logoVelX = 100.0f;
+    state->logoVelY = 80.0f;
+    LoadBitmap(&state->texture, memory->DEBUGReadFile, "crate.bmp");
+    state->texture.opacity = 1.0f;
+
+    memory->isInitialized = true;
+    e->frameStart = std::chrono::steady_clock::now();
+}
+
+static void Update(hy3d_engine *e, engine_state *state)
 {
     std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
-    std::chrono::duration<f32> frameTime = frameEnd - e.frameStart;
+    std::chrono::duration<f32> frameTime = frameEnd - e->frameStart;
     f32 dt = frameTime.count();
-    e.frameStart = frameEnd;
+    e->frameStart = frameEnd;
 
-    engine_state *state = (engine_state *)memory->permanentMemory;
-
-    if (!memory->isInitialized)
-    {
-        state->cubeOrientation = {0.0f, 0.0f, 0.0f};
-        state->cubeZ = 2.0f;
-        state->drawLines = false;
-        memory->isInitialized = true;
-
-        LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
-        state->background.opacity = 1.7f;
-        LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d_gimp.bmp");
-        state->logo.opacity = 1.0f;
-    }
-
-    // NOTE:  UPDATE
     // Cube Control
     f32 speed = 1.5f * dt;
-    if (e.input.keyboard.isPressed[UP])
+    if (e->input.keyboard.isPressed[UP])
     {
-        state->logo.posY += speed * 100.0f;
         state->cubeOrientation.thetaX += speed;
     }
-    if (e.input.keyboard.isPressed[DOWN])
+    if (e->input.keyboard.isPressed[DOWN])
     {
-        state->logo.posY -= speed * 100.0f;
         state->cubeOrientation.thetaX -= speed;
     }
-    if (e.input.keyboard.isPressed[LEFT])
+    if (e->input.keyboard.isPressed[LEFT])
     {
-        state->logo.posX -= speed * 100.0f;
         state->cubeOrientation.thetaY += speed;
     }
-    if (e.input.keyboard.isPressed[RIGHT])
+    if (e->input.keyboard.isPressed[RIGHT])
     {
-        state->logo.posX += speed * 100.0f;
         state->cubeOrientation.thetaY -= speed;
     }
-    if (e.input.keyboard.isPressed[Q])
+    if (e->input.keyboard.isPressed[Q])
         state->cubeOrientation.thetaZ += speed;
-    if (e.input.keyboard.isPressed[W])
+    if (e->input.keyboard.isPressed[W])
         state->cubeOrientation.thetaZ -= speed;
 
-    state->logo.opacity += (f32)e.input.mouse.WheelDelta() * 0.0005f;
+    // Logo Control
+    if (state->logo.posX < 0 || (state->logo.posX + state->logo.width) > e->pixelBuffer.width)
+        state->logoVelX = -state->logoVelX;
+    if (state->logo.posY < 0 || (state->logo.posY + state->logo.height) > e->pixelBuffer.height)
+        state->logoVelY = -state->logoVelY;
+    state->logo.posX += state->logoVelX * dt;
+    state->logo.posY += state->logoVelY * dt;
+
+    state->logo.opacity += (f32)e->input.mouse.WheelDelta() * 0.0005f;
     if (state->logo.opacity > 1.0f)
         state->logo.opacity = 1.0f;
     if (state->logo.opacity < 0.0f)
         state->logo.opacity = 0.0f;
 
-    if (e.input.keyboard.isPressed[R])
+    if (e->input.keyboard.isPressed[R])
     {
         state->cubeOrientation.thetaX = 0.0f;
         state->cubeOrientation.thetaY = 0.0f;
         state->cubeOrientation.thetaZ = 0.0f;
     }
     f32 offsetZ = 1.0f * dt;
-    if (e.input.keyboard.isPressed[Z])
+    if (e->input.keyboard.isPressed[Z])
         state->cubeZ -= offsetZ;
-    if (e.input.keyboard.isPressed[X])
+    if (e->input.keyboard.isPressed[X])
         state->cubeZ += offsetZ;
-    state->drawLines = e.input.keyboard.isPressed[CTRL];
+    state->drawLines = e->input.keyboard.isPressed[CTRL];
+}
 
-    // NOTE:  RENDER
-    DrawBitmap(&state->background, 0, 0, &e.pixelBuffer);
-    DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e.pixelBuffer);
+static void Render(hy3d_engine *e, engine_state *state)
+{
+    DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
+    DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
-    state->cubeAxis = MakeAxis3D({-0.5f, -0.5f, -0.5f}, 1.5f, state->cubeOrientation);
+    state->cubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->cubeOrientation);
     state->cube = MakeCube(1.0f, state->cubeOrientation);
 
     // Apply Transformations
@@ -416,11 +570,11 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     // Transform to sceen
     for (int i = 0; i < state->cubeAxis.nVertices; i++)
     {
-        e.screenTransformer.Transform(state->cubeAxis.vertices[i]);
+        e->screenTransformer.Transform(state->cubeAxis.vertices[i]);
     }
     for (int i = 0; i < state->cube.nVertices; i++)
     {
-        e.screenTransformer.Transform(state->cube.vertices[i]);
+        e->screenTransformer.Transform(state->cube.vertices[i]);
     }
 
     //Draw Triangles
@@ -428,12 +582,11 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     {
         if (state->cube.isTriangleVisible[i / 3])
         {
-            triangle t{
-                state->cube.vertices[state->cube.triangles[i]],
-                state->cube.vertices[state->cube.triangles[i + 1]],
-                state->cube.vertices[state->cube.triangles[i + 2]],
-            };
-            DrawTriangle(&e.pixelBuffer, t, state->cube.colors[i / 6]);
+            textured_triangle t{
+                {state->cube.vertices[state->cube.triangles[i]], state->cube.texCoord[state->cube.triangles[i]]},
+                {state->cube.vertices[state->cube.triangles[i + 1]], state->cube.texCoord[state->cube.triangles[i + 1]]},
+                {state->cube.vertices[state->cube.triangles[i + 2]], state->cube.texCoord[state->cube.triangles[i + 2]]}};
+            DrawTriangleTexture(&e->pixelBuffer, t, state->texture);
         }
     }
 
@@ -444,15 +597,15 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
         {
             vec3 a = state->cube.vertices[state->cube.lines[i]];
             vec3 b = state->cube.vertices[state->cube.lines[i + 1]];
-            DrawLine(&e.pixelBuffer, a, b, {255, 255, 255});
+            DrawLine(&e->pixelBuffer, a, b, {255, 255, 255});
         }
     }
 
-    for (int i = 0; i < state->cubeAxis.nLinesVertices; i += 2)
+    for (int i = 0; i < 3 /*state->cubeAxis.nLinesVertices*/; i += 2)
     {
         vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
         vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-        DrawLine(&e.pixelBuffer, a, b, {100, 100, 0});
+        DrawLine(&e->pixelBuffer, a, b, {100, 100, 0});
     }
 
     state->worldAxis = MakeAxis3D({-3.9f, -3.9f, 2.0f}, 0.3f, {0.0f, 0.0f, 0.0f});
@@ -462,12 +615,24 @@ extern "C" UPDATE_AND_RENDER(UpdateAndRender)
     }
     for (int i = 0; i < state->worldAxis.nVertices; i++)
     {
-        e.screenTransformer.Transform(state->worldAxis.vertices[i]);
+        e->screenTransformer.Transform(state->worldAxis.vertices[i]);
     }
     for (int i = 0; i < state->worldAxis.nLinesVertices; i += 2)
     {
         vec3 a = state->worldAxis.vertices[state->worldAxis.lines[i]];
         vec3 b = state->worldAxis.vertices[state->worldAxis.lines[i + 1]];
-        DrawLine(&e.pixelBuffer, a, b, {255, 255, 255});
+        DrawLine(&e->pixelBuffer, a, b, {100, 100, 100});
     }
+}
+
+extern "C" UPDATE_AND_RENDER(UpdateAndRender)
+{
+    engine_state *state = (engine_state *)memory->permanentMemory;
+
+    // NOTE:  Initialization
+    if (!memory->isInitialized)
+        Initialize(&e, state, memory);
+
+    Update(&e, state);
+    Render(&e, state);
 }

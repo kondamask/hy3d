@@ -7,6 +7,26 @@ struct triangle
     vec3 v0, v1, v2;
 };
 
+struct texel
+{
+    vec3 pos;
+    vec2 coord;
+
+    inline texel interpolateTo(texel A, texel B)
+    {
+        f32 alpha = (A.pos.y - pos.y) / (B.pos.y - pos.y);
+        return {
+            lerp(pos, A.pos, B.pos, alpha),
+            lerp(coord, A.coord, B.coord, alpha)
+        };
+    }
+};
+
+struct textured_triangle
+{
+    texel v0, v1, v2;
+};
+
 struct Color
 {
     u8 r, g, b;
@@ -24,6 +44,7 @@ struct cube
     i8 nLinesVertices = 24;
     i8 nTrianglesVertices = 36;
     vec3 vertices[8];
+    vec2 texCoord[8];
     i8 lines[24] = {
         0, 1, 1, 3, 3, 2, 2, 0,
         0, 4, 1, 5, 3, 7, 2, 6,
@@ -57,6 +78,14 @@ static cube MakeCube(f32 side, orientation o)
     result.vertices[5] = {side, -side, side};
     result.vertices[6] = {-side, side, side};
     result.vertices[7] = {side, side, side};
+    result.texCoord[0] = {0.0f, 0.0f};
+    result.texCoord[1] = {1.0f, 0.0f};
+    result.texCoord[2] = {0.0f, 1.0f};
+    result.texCoord[3] = {1.0f, 1.0f};
+    result.texCoord[4] = {0.0f, 0.0f};
+    result.texCoord[5] = {1.0f, 0.0f};
+    result.texCoord[6] = {0.0f, 1.0f};
+    result.texCoord[7] = {1.0f, 1.0f};
     result.orientation.thetaX = o.thetaX;
     result.orientation.thetaY = o.thetaY;
     result.orientation.thetaZ = o.thetaZ;

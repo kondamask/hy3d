@@ -66,6 +66,20 @@ struct loaded_bitmap
     f32 posY;
     f32 opacity;
     u32 *pixels;
+
+    Color GetColor(i32 x, i32 y)
+    {
+        if(x < 0) x = 0;
+        if(x >= width) x = width - 1;
+        if(y < 0) y = 0;
+        if(y >= height) y = height - 1;
+        
+        u32 c = *(pixels + y * width + x);
+        u8 r = (c >> 16) & 0xFF;
+        u8 g = (c >> 8) & 0xFF;
+        u8 b = (c >> 0) & 0xFF;
+        return {r, g, b};
+    }
 };
 
 struct engine_state
@@ -80,6 +94,9 @@ struct engine_state
 
     loaded_bitmap background;
     loaded_bitmap logo;
+    loaded_bitmap texture;
+    f32 logoVelX;
+    f32 logoVelY;
 };
 
 // TODO: add Z later
@@ -209,7 +226,7 @@ struct hy3d_engine
     screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;
 
-    void Initialize(void *pixelBufferMemory, i16 width, i16 height, i8 bytesPerPixel, i32 bufferSize)
+    void InitializePixelBuffer(void *pixelBufferMemory, i16 width, i16 height, i8 bytesPerPixel, i32 bufferSize)
     {
         pixelBuffer = {};
         pixelBuffer.memory = pixelBufferMemory;
@@ -217,20 +234,6 @@ struct hy3d_engine
         pixelBuffer.height = height;
         pixelBuffer.bytesPerPixel = bytesPerPixel;
         pixelBuffer.size = width * height * bytesPerPixel;
-
-        input = {};
-
-        space.left = -1.0f;
-        space.right = 1.0f;
-        space.top = 1.0f;
-        space.bottom = -1.0f;
-        space.width = space.right - space.left;
-        space.height = space.top - space.bottom;
-
-        screenTransformer.xFactor = width / space.width;
-        screenTransformer.yFactor = height / space.height;
-
-        frameStart = std::chrono::steady_clock::now();
     }
 };
 

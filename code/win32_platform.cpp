@@ -463,13 +463,9 @@ static FILETIME Win32GetWriteTime(char *filename)
 
 static void Win32LoadEngineCode(win32_engine_code *engineCode, char *sourceFilename, char *sourceFilenameCopy)
 {
+	// NOTE:  We need to add a sleep in order to wait for the dll compilation.
+	Sleep(800);
 	engineCode->writeTime = Win32GetWriteTime(sourceFilename);
-
-	// NOTE:  FOR SOME FUCKING REASON THE COPYFILE DOESN'T WORK UNLESS
-	// SOME TIME HAS PASSED SINCE WE UNLOADED THE ORIGINAL DLL. OTHERWISE
-	// WE GET ERROR CODE 32: The process cannot access the file because it is being used by another process.
-	// IS THIS EVEN FIXABLE?
-	Sleep(500);
 	CopyFileA(sourceFilename, sourceFilenameCopy, FALSE);
 	engineCode->dll = LoadLibraryA(sourceFilenameCopy);
 	if (engineCode->dll)
@@ -512,15 +508,15 @@ int CALLBACK WinMain(
 
 		if (engineMemory.permanentMemory && engineMemory.transientMemory)
 		{
-			win32_engine_code engineCode;
-			hy3d_engine engine;
-			engine.Initialize(window.pixelBuffer.memory,
-							  window.pixelBuffer.width, window.pixelBuffer.height,
-							  window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
-
+			win32_engine_code engineCode = {};
 			char *sourceDLLPath = "W:\\hy3d\\build\\hy3d_engine.dll";
 			char *sourceDLLCopyPath = "W:\\hy3d\\build\\hy3d_engine_copy.dll";
 			Win32LoadEngineCode(&engineCode, sourceDLLPath, sourceDLLCopyPath);
+
+			hy3d_engine engine = {};
+			engine.InitializePixelBuffer(window.pixelBuffer.memory,
+									window.pixelBuffer.width, window.pixelBuffer.height,
+									window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))

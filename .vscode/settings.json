@@ -9,6 +9,21 @@
         "*.m": "matlab",
         "*.sql": "sql",
         "*.md": "markdown",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "cmath": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "cwchar": "cpp",
+        "initializer_list": "cpp",
+        "iosfwd": "cpp",
+        "limits": "cpp",
+        "ratio": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "xstddef": "cpp",
+        "xtr1common": "cpp"
     }
 }

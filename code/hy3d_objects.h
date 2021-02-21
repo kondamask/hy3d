@@ -17,8 +17,7 @@ struct texel
         f32 alpha = (A.pos.y - pos.y) / (B.pos.y - pos.y);
         return {
             lerp(pos, A.pos, B.pos, alpha),
-            lerp(coord, A.coord, B.coord, alpha)
-        };
+            lerp(coord, A.coord, B.coord, alpha)};
     }
 };
 
@@ -78,14 +77,15 @@ static cube MakeCube(f32 side, orientation o)
     result.vertices[5] = {side, -side, side};
     result.vertices[6] = {-side, side, side};
     result.vertices[7] = {side, side, side};
-    result.texCoord[0] = {0.0f, 0.0f};
-    result.texCoord[1] = {1.0f, 0.0f};
-    result.texCoord[2] = {0.0f, 1.0f};
-    result.texCoord[3] = {1.0f, 1.0f};
-    result.texCoord[4] = {0.0f, 0.0f};
-    result.texCoord[5] = {1.0f, 0.0f};
-    result.texCoord[6] = {0.0f, 1.0f};
-    result.texCoord[7] = {1.0f, 1.0f};
+    result.texCoord[0] = {0.0f, 1.0f};
+    result.texCoord[1] = {1.0f, 1.0f};
+    result.texCoord[2] = {0.0f, 0.0f};
+    result.texCoord[3] = {1.0f, 0.0f};
+    result.texCoord[4] = {1.0f, 1.0f};
+    result.texCoord[5] = {0.0f, 1.0f};
+    result.texCoord[6] = {1.0f, 0.0f};
+    result.texCoord[7] = {0.0f, 0.0f};
+
     result.orientation.thetaX = o.thetaX;
     result.orientation.thetaY = o.thetaY;
     result.orientation.thetaZ = o.thetaZ;
@@ -101,6 +101,10 @@ struct axis3d
         0, 1,
         0, 2,
         0, 3};
+    Color colors[3] = {
+        {255, 0, 0},
+        {0, 255, 0},
+        {0, 0, 255}};
     orientation orientation;
 };
 

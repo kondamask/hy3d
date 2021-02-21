@@ -84,13 +84,10 @@ struct loaded_bitmap
 
 struct engine_state
 {
-    orientation cubeOrientation;
-    f32 cubeZ;
-    bool drawLines;
-    axis3d cubeAxis;
     cube cube;
-
-    axis3d worldAxis;
+    f32 cubeZ;
+    bool drawCubeOutline;
+    axis3d cubeAxis;
 
     loaded_bitmap background;
     loaded_bitmap logo;

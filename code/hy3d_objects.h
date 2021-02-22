@@ -26,7 +26,7 @@ struct textured_triangle
     texel v0, v1, v2;
 };
 
-struct Color
+struct color
 {
     u8 r, g, b;
 };
@@ -56,7 +56,7 @@ struct cube
         0, 4, 2, 2, 4, 6,
         0, 1, 4, 1, 5, 4};
     bool isTriangleVisible[12] = {false}; // triangles vertices / 3. the number of triangles
-    Color colors[6] = {
+    color colors[6] = {
         {255, 0, 0},
         {0, 255, 0},
         {0, 0, 255},
@@ -65,7 +65,7 @@ struct cube
         {0, 255, 255}};
 };
 
-static cube MakeCube(f32 side, orientation o)
+static cube MakeCube(f32 side, orientation o, f32 texSide)
 {
     cube result;
     side /= 2.0f;
@@ -77,13 +77,13 @@ static cube MakeCube(f32 side, orientation o)
     result.vertices[5] = {side, -side, side};
     result.vertices[6] = {-side, side, side};
     result.vertices[7] = {side, side, side};
-    result.texCoord[0] = {0.0f, 1.0f};
-    result.texCoord[1] = {1.0f, 1.0f};
+    result.texCoord[0] = {0.0f, -texSide};
+    result.texCoord[1] = {texSide, -texSide};
     result.texCoord[2] = {0.0f, 0.0f};
-    result.texCoord[3] = {1.0f, 0.0f};
-    result.texCoord[4] = {1.0f, 1.0f};
-    result.texCoord[5] = {0.0f, 1.0f};
-    result.texCoord[6] = {1.0f, 0.0f};
+    result.texCoord[3] = {texSide, 0.0f};
+    result.texCoord[4] = {texSide, -texSide};
+    result.texCoord[5] = {0.0f, -texSide};
+    result.texCoord[6] = {texSide, 0.0f};
     result.texCoord[7] = {0.0f, 0.0f};
 
     result.orientation.thetaX = o.thetaX;
@@ -101,7 +101,7 @@ struct axis3d
         0, 1,
         0, 2,
         0, 3};
-    Color colors[3] = {
+    color colors[3] = {
         {255, 0, 0},
         {0, 255, 0},
         {0, 0, 255}};

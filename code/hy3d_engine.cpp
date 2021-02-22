@@ -1,7 +1,7 @@
 #include "hy3d_engine.h"
 #include <intrin.h>
 
-static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, Color c)
+static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, color c)
 {
     // Pixel 32 bits
     // Memory:      BB GG RR xx
@@ -19,7 +19,23 @@ static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, Color c)
     }
 }
 
-static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, Color c)
+static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, u32 c)
+{
+    // Pixel 32 bits
+    // Memory:      BB GG RR xx
+    // Register:    xx RR GG BB
+
+    u32 *pixel = (u32 *)pixelBuffer->memory + y * pixelBuffer->width + x;
+    bool isInBuffer =
+        y >= 0 &&
+        y < pixelBuffer->height &&
+        x >= 0 &&               // left
+        x < pixelBuffer->width; // right
+    if (isInBuffer)
+        *pixel = c;
+}
+
+static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, color c)
 {
     f32 dx = b.x - a.x;
     f32 dy = b.y - a.y;
@@ -63,7 +79,7 @@ static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, Color c)
     }
 }
 
-static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
+static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, color c)
 {
     // Sort by y: v0 is at the top, v2 at the bottom
     if (t.v0.y < t.v1.y)
@@ -143,6 +159,24 @@ static void DrawTriangle(pixel_buffer *pixelBuffer, triangle t, Color c)
     }
 }
 
+static inline u32 GetTextureColorU32(loaded_bitmap bmp, vec2 coord)
+{
+    f32 x = coord.x * bmp.width;
+    f32 y = coord.y * bmp.height;
+    f32 xMax = (f32)bmp.width - 1.0f;
+    f32 yMax = (f32)bmp.height - 1.0f;
+    if (x < 0.0f)
+        x = 0.0f;
+    else if (xMax < x)
+        x = bmp.width - 1.0f;
+    if (y < 0.0f)
+        y = 0.0f;
+    else if (yMax < y)
+        y = bmp.height - 1.0f;
+
+    return bmp.GetColorU32((i32)x, (i32)y);
+}
+
 static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, loaded_bitmap bmp)
 {
     // Sort by y: v0 is at the top, v2 at the bottom
@@ -170,16 +204,15 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
     // Check if hypotinus is on the left
     bool isLeftSideMajor = t.v1.pos.x > split.pos.x;
 
-    // Calculate Slopes
+    // Calculate Slopes and Texture Lookup steps
     // NOTE:
     // It looks like that multiplication with the negative slope and the negative
     // Dy give more precise results in comparison with the positive slope and Dy.
+    f32 xLeftF, xRightF = 0.0f;
+    i16 xLeft, xRight;
     f32 slope01 = -(t.v1.pos.x - t.v0.pos.x) / (t.v1.pos.y - t.v0.pos.y);
     f32 slope02 = -(t.v2.pos.x - t.v0.pos.x) / (t.v2.pos.y - t.v0.pos.y);
     f32 slope12 = -(t.v2.pos.x - t.v1.pos.x) / (t.v2.pos.y - t.v1.pos.y);
-
-    f32 xLeftF, xRightF = 0.0f;
-    i16 xLeft, xRight;
 
     vec2 texLeft = {};
     vec2 texRight = {};
@@ -190,8 +223,8 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
     vec2 texCoord = {};
 
     // Top Half | Flat Bottom Triangle
-    texLeft = t.v0.coord;
-    texRight = t.v0.coord;
+    texLeft = t.v0.coord + texStep02 * ((f32)yTop + 0.5f - t.v0.pos.y);
+    texRight = t.v0.coord + texStep01 * ((f32)yTop + 0.5f - t.v0.pos.y);
     if (isLeftSideMajor)
     {
         for (i16 y = yTop; y > ySplit; y--)
@@ -204,7 +237,7 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
             texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
             for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
             {
-                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                u32 c = GetTextureColorU32(bmp, texCoord);
                 PutPixel(pixelBuffer, x, y, c);
             }
             texLeft -= texStep02;
@@ -224,7 +257,7 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
 
             for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
             {
-                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                u32 c = GetTextureColorU32(bmp, texCoord);
                 PutPixel(pixelBuffer, x, y, c);
             }
             texLeft -= texStep01;
@@ -235,8 +268,8 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
     //Bottom Half | Flat Top
     if (isLeftSideMajor)
     {
-        texLeft = split.coord;
-        texRight = t.v1.coord;
+        texLeft = split.coord + texStep02 * ((f32)ySplit + 0.5f - split.pos.y);
+        texRight = t.v1.coord + texStep12 * ((f32)ySplit + 0.5f - split.pos.y);
         for (i16 y = ySplit; y > yBottom; y--)
         {
             xLeftF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
@@ -247,7 +280,7 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
             texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
             for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
             {
-                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                u32 c = GetTextureColorU32(bmp, texCoord);
                 PutPixel(pixelBuffer, x, y, c);
             }
             texLeft -= texStep02;
@@ -256,8 +289,8 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
     }
     else
     {
-        texRight = split.coord;
-        texLeft = t.v1.coord;
+        texLeft = t.v1.coord + texStep12 * ((f32)ySplit + 0.5f - split.pos.y);
+        texRight = split.coord + texStep02 * ((f32)ySplit + 0.5f - split.pos.y);
         for (i16 y = ySplit; y > yBottom; y--)
         {
             xLeftF = slope12 * (t.v1.pos.y - (f32)y + 0.5f) + t.v1.pos.x;
@@ -268,8 +301,152 @@ static void DrawTriangleTexture(pixel_buffer *pixelBuffer, textured_triangle t, 
             texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
             for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
             {
-                Color c = bmp.GetColor((i32)(texCoord.x * bmp.width), (i32)(texCoord.y * bmp.height));
+                u32 c = GetTextureColorU32(bmp, texCoord);
                 PutPixel(pixelBuffer, x, y, c);
+            }
+            texLeft -= texStep12;
+            texRight -= texStep02;
+        }
+    }
+}
+
+static inline u32 GetTextureWrapColorU32(loaded_bitmap bmp, vec2 coord)
+{
+    f32 x = coord.x * (f32)bmp.width;
+    f32 y = coord.y * (f32)bmp.height;
+    f32 xMax = (f32)bmp.width - 1.0f;
+    f32 yMax = (f32)bmp.height - 1.0f;
+    x = std::fmodf(x, xMax);
+    y = std::fmodf(y, yMax);
+    if (x < 0.0f)
+        x += xMax;
+    if (y < 0.0f)
+        y += yMax;
+
+    return bmp.GetColorU32((i32)x, (i32)y);
+}
+
+static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, textured_triangle t, loaded_bitmap bmp)
+{
+    // Sort by y: v0 is at the top, v2 at the bottom
+    if (t.v0.pos.y < t.v1.pos.y)
+        std::swap(t.v0, t.v1);
+    if (t.v1.pos.y < t.v2.pos.y)
+        std::swap(t.v1, t.v2);
+    if (t.v0.pos.y < t.v1.pos.y)
+        std::swap(t.v0, t.v1);
+
+    // Sort by x:
+    // if v1.pos.y is the same as v0.pos.y, v1 should be to the right
+    // if v1.pos.y is the same as v2.pos.y, v1 it should be to the left
+    if (t.v0.pos.y == t.v1.pos.y && t.v0.pos.x > t.v1.pos.x)
+        std::swap(t.v0, t.v1);
+    else if (t.v1.pos.y == t.v2.pos.y && t.v1.pos.x > t.v2.pos.x)
+        std::swap(t.v1, t.v2);
+
+    // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
+    texel split = t.v0.interpolateTo(t.v1, t.v2);
+    i16 yTop = RoundDownF32toI16(t.v0.pos.y);
+    i16 ySplit = RoundDownF32toI16(split.pos.y);
+    i16 yBottom = RoundDownF32toI16(t.v2.pos.y);
+
+    // Check if hypotinus is on the left
+    bool isLeftSideMajor = t.v1.pos.x > split.pos.x;
+
+    // Calculate Slopes and Texture Lookup steps
+    // NOTE:
+    // It looks like that multiplication with the negative slope and the negative
+    // Dy give more precise results in comparison with the positive slope and Dy.
+    f32 xLeftF, xRightF = 0.0f;
+    i16 xLeft, xRight;
+    f32 slope01 = -(t.v1.pos.x - t.v0.pos.x) / (t.v1.pos.y - t.v0.pos.y);
+    f32 slope02 = -(t.v2.pos.x - t.v0.pos.x) / (t.v2.pos.y - t.v0.pos.y);
+    f32 slope12 = -(t.v2.pos.x - t.v1.pos.x) / (t.v2.pos.y - t.v1.pos.y);
+
+    vec2 texLeft = {};
+    vec2 texRight = {};
+    vec2 texStep01 = (t.v1.coord - t.v0.coord) / (t.v1.pos.y - t.v0.pos.y);
+    vec2 texStep02 = (t.v2.coord - t.v0.coord) / (t.v2.pos.y - t.v0.pos.y);
+    vec2 texStep12 = (t.v2.coord - t.v1.coord) / (t.v2.pos.y - t.v1.pos.y);
+    vec2 texScanStep = {};
+    vec2 texCoord = {};
+
+    // Top Half | Flat Bottom Triangle
+    texLeft = t.v0.coord; // + texStep02 * ((f32)yTop + 0.5f - t.v0.pos.y);
+    texRight = t.v0.coord; // + texStep01 * ((f32)yTop + 0.5f - t.v0.pos.y);
+    if (isLeftSideMajor)
+    {
+        for (i16 y = yTop; y > ySplit; y--)
+        {
+            xLeftF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope01 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                PutPixel(pixelBuffer, x, y, GetTextureWrapColorU32(bmp, texCoord));
+            }
+            texLeft -= texStep02;
+            texRight -= texStep01;
+        }
+    }
+    else
+    {
+        for (i16 y = yTop; y > ySplit; y--)
+        {
+            xLeftF = slope01 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                PutPixel(pixelBuffer, x, y, GetTextureWrapColorU32(bmp, texCoord));
+            }
+            texLeft -= texStep01;
+            texRight -= texStep02;
+        }
+    }
+
+    //Bottom Half | Flat Top
+    if (isLeftSideMajor)
+    {
+        texLeft = split.coord; // + texStep02 * ((f32)ySplit + 0.5f - split.pos.y);
+        texRight = t.v1.coord; // + texStep12 * ((f32)ySplit + 0.5f - split.pos.y);
+        for (i16 y = ySplit; y > yBottom; y--)
+        {
+            xLeftF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xRightF = slope12 * (t.v1.pos.y - (f32)y + 0.5f) + t.v1.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                PutPixel(pixelBuffer, x, y, GetTextureWrapColorU32(bmp, texCoord));
+            }
+            texLeft -= texStep02;
+            texRight -= texStep12;
+        }
+    }
+    else
+    {
+        texLeft = t.v1.coord;// + texStep12 * ((f32)ySplit + 0.5f - split.pos.y);
+        texRight = split.coord;// + texStep02 * ((f32)ySplit + 0.5f - split.pos.y);
+        for (i16 y = ySplit; y > yBottom; y--)
+        {
+            xLeftF = slope12 * (t.v1.pos.y - (f32)y + 0.5f) + t.v1.pos.x;
+            xRightF = slope02 * (t.v0.pos.y - (f32)y + 0.5f) + t.v0.pos.x;
+            xLeft = RoundDownF32toI16(xLeftF);
+            xRight = RoundDownF32toI16(xRightF);
+            texScanStep = (texRight - texLeft) / (xRightF - xLeftF);
+            texCoord = texLeft + texScanStep * ((f32)xLeft + 0.5f - xLeftF);
+            for (i16 x = xLeft; x < xRight; x++, texCoord += texScanStep)
+            {
+                PutPixel(pixelBuffer, x, y, GetTextureWrapColorU32(bmp, texCoord));
             }
             texLeft -= texStep12;
             texRight -= texStep02;
@@ -539,7 +716,7 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
     state->cubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->cube.orientation);
-    state->cube = MakeCube(1.0f, state->cube.orientation);
+    state->cube = MakeCube(1.0f, state->cube.orientation, 1.0f);
 
     // NOTE:  Apply Transformations
     mat3 transformation = RotateX(state->cube.orientation.thetaX) *
@@ -583,7 +760,7 @@ static void Render(hy3d_engine *e, engine_state *state)
                 {state->cube.vertices[state->cube.triangles[i]], state->cube.texCoord[state->cube.triangles[i]]},
                 {state->cube.vertices[state->cube.triangles[i + 1]], state->cube.texCoord[state->cube.triangles[i + 1]]},
                 {state->cube.vertices[state->cube.triangles[i + 2]], state->cube.texCoord[state->cube.triangles[i + 2]]}};
-            DrawTriangleTexture(&e->pixelBuffer, t, state->texture);
+            DrawTriangleTextureWrap(&e->pixelBuffer, t, state->background);
         }
     }
     if (state->drawCubeOutline)

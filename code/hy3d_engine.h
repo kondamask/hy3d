@@ -67,18 +67,10 @@ struct loaded_bitmap
     f32 opacity;
     u32 *pixels;
 
-    Color GetColor(i32 x, i32 y)
+    u32 GetColorU32(i32 x, i32 y)
     {
-        if(x < 0) x = 0;
-        if(x >= width) x = width - 1;
-        if(y < 0) y = 0;
-        if(y >= height) y = height - 1;
-        
-        u32 c = *(pixels + y * width + x);
-        u8 r = (c >> 16) & 0xFF;
-        u8 g = (c >> 8) & 0xFF;
-        u8 b = (c >> 0) & 0xFF;
-        return {r, g, b};
+        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
+        return pixels[x + y * width];
     }
 };
 

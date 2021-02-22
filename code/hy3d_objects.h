@@ -92,6 +92,81 @@ static cube MakeCube(f32 side, orientation o, f32 texSide)
     return result;
 }
 
+struct cube_skinned
+{
+    orientation orientation;
+    i8 nVertices = 14;
+    i8 nLinesVertices = 24;
+    i8 nTrianglesVertices = 36;
+    vec3 vertices[14];
+    vec2 texCoord[14];
+    i8 lines[24] = {
+        0, 1, 1, 3, 3, 2, 2, 0,
+        0, 4, 1, 5, 3, 7, 2, 6,
+        4, 5, 5, 7, 7, 6, 6, 4};
+    // 1 Triangle every three vertices
+    i8 triangles[36] = {
+        0, 2, 1, 2, 3, 1,
+        4, 0, 5, 0, 1, 5,
+        6, 4, 7, 4, 5, 7,
+        8, 6, 9, 6, 7, 9,
+        10, 11, 4, 11, 0, 4,
+        5, 1, 12, 1, 13, 12};
+    bool isTriangleVisible[12] = {false}; // triangles vertices / 3. the number of triangles
+    color colors[6] = {
+        {255, 0, 0},
+        {0, 255, 0},
+        {0, 0, 255},
+        {255, 255, 0},
+        {255, 0, 255},
+        {0, 255, 255}};
+};
+
+static inline vec2 ConvertSkinToTextureCoord(f32 u, f32 v)
+{
+    return {u / 3.0f, v / 4.0f};
+}
+
+static cube_skinned MakeCubeSkinned(f32 side, orientation o)
+{
+    cube_skinned result;
+    side /= 2.0f;
+
+    result.vertices[0] = {-side, -side, -side}; // 0
+    result.texCoord[0] = {ConvertSkinToTextureCoord(1.0f, 3.0f)};
+    result.vertices[1] = {side, -side, -side}; // 1
+    result.texCoord[1] = {ConvertSkinToTextureCoord(2.0f, 3.0f)};
+    result.vertices[2] = {-side, side, -side}; // 2
+    result.texCoord[2] = {ConvertSkinToTextureCoord(1.0f, 4.0f)};
+    result.vertices[3] = {side, side, -side}; // 3
+    result.texCoord[3] = {ConvertSkinToTextureCoord(2.0f, 4.0f)};
+    result.vertices[4] = {-side, -side, side}; // 4
+    result.texCoord[4] = {ConvertSkinToTextureCoord(1.0f, 2.0f)};
+    result.vertices[5] = {side, -side, side}; // 5
+    result.texCoord[5] = {ConvertSkinToTextureCoord(2.0f, 2.0f)};
+    result.vertices[6] = {-side, side, side}; // 6
+    result.texCoord[6] = {ConvertSkinToTextureCoord(1.0f, 1.0f)};
+    result.vertices[7] = {side, side, side}; // 7
+    result.texCoord[7] = {ConvertSkinToTextureCoord(2.0f, 1.0f)};
+    result.vertices[8] = {-side, side, -side}; // 8
+    result.texCoord[8] = {ConvertSkinToTextureCoord(1.0f, 0.0f)};
+    result.vertices[9] = {side, side, -side}; // 9
+    result.texCoord[9] = {ConvertSkinToTextureCoord(2.0f, 0.0f)};
+    result.vertices[10] = {-side, side, side}; // 10
+    result.texCoord[10] = {ConvertSkinToTextureCoord(0.0f, 2.0f)};
+    result.vertices[11] = {-side, side, -side}; // 11
+    result.texCoord[11] = {ConvertSkinToTextureCoord(0.0f, 3.0f)};
+    result.vertices[12] = {side, side, side}; // 12
+    result.texCoord[12] = {ConvertSkinToTextureCoord(3.0f, 2.0f)};
+    result.vertices[13] = {side, side, -side}; // 13
+    result.texCoord[13] = {ConvertSkinToTextureCoord(3.0f, 3.0f)};
+
+    result.orientation.thetaX = o.thetaX;
+    result.orientation.thetaY = o.thetaY;
+    result.orientation.thetaZ = o.thetaZ;
+    return result;
+}
+
 struct axis3d
 {
     i8 nVertices = 4;

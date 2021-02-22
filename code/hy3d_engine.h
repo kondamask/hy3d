@@ -72,11 +72,21 @@ struct loaded_bitmap
         ASSERT(x >= 0 && x < width && y >= 0 && y < height)
         return pixels[x + y * width];
     }
+
+    color GetColorRGB(i32 x, i32 y)
+    {
+        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
+        u32 c = *(pixels + y * width + x);
+        u8 r = (c >> 16) & 0xFF;
+        u8 g = (c >> 8) & 0xFF;
+        u8 b = (c >> 0) & 0xFF;
+        return {r, g, b};
+    }
 };
 
 struct engine_state
 {
-    cube cube;
+    cube_skinned cube;
     f32 cubeZ;
     bool drawCubeOutline;
     axis3d cubeAxis;

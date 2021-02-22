@@ -645,7 +645,7 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     state->logo.opacity = 0.3f;
     state->logoVelX = 100.0f;
     state->logoVelY = 80.0f;
-    LoadBitmap(&state->texture, memory->DEBUGReadFile, "crate.bmp");
+    LoadBitmap(&state->texture, memory->DEBUGReadFile, "minecraft_grass.bmp");
     state->texture.opacity = 1.0f;
 
     memory->isInitialized = true;
@@ -716,7 +716,7 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
     state->cubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->cube.orientation);
-    state->cube = MakeCube(1.0f, state->cube.orientation, 1.0f);
+    state->cube = MakeCubeSkinned(1.0f, state->cube.orientation);
 
     // NOTE:  Apply Transformations
     mat3 transformation = RotateX(state->cube.orientation.thetaX) *
@@ -760,7 +760,7 @@ static void Render(hy3d_engine *e, engine_state *state)
                 {state->cube.vertices[state->cube.triangles[i]], state->cube.texCoord[state->cube.triangles[i]]},
                 {state->cube.vertices[state->cube.triangles[i + 1]], state->cube.texCoord[state->cube.triangles[i + 1]]},
                 {state->cube.vertices[state->cube.triangles[i + 2]], state->cube.texCoord[state->cube.triangles[i + 2]]}};
-            DrawTriangleTextureWrap(&e->pixelBuffer, t, state->background);
+            DrawTriangleTextureWrap(&e->pixelBuffer, t, state->texture);
         }
     }
     if (state->drawCubeOutline)

@@ -59,7 +59,7 @@ struct cube_skinned
 {
     orientation orientation;
     i8 nVertices = 14;
-    i8 nLinesVertices = 24;
+    i8 nLineIndices = 24;
     i8 nIndices = 36;
     vertex vertices[14];
     i8 lines[24] = {

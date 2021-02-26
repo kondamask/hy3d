@@ -261,7 +261,7 @@ static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loade
         DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
-static void DrawObject(
+static void DrawObjectTextured(
     vertex *vertices, i32 nVertices, i8 *indices, i32 nIndices,
     mat3 rotation, vec3 translation, loaded_bitmap *bmp,
     pixel_buffer *pixelBuffer, screen_transformer *st)
@@ -272,7 +272,6 @@ static void DrawObject(
 
     // Find and Draw Visible Triangles
     for (i32 i = 0; i < nIndices; i += 3)
-    //for (i32 i = 0; i < 3; i += 3)
     {
         triangle t = {vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]]};
         bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
@@ -284,6 +283,45 @@ static void DrawObject(
 
             DrawTriangleTextured(pixelBuffer, t, bmp);
         }
+    }
+}
+
+static void DrawObjectOutline(
+    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color c,
+    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
+{
+    // Apply Transformations
+    for (i32 i = 0; i < nVertices; i++)
+    {
+        TransformVertexToScreen(st, &vertices[i].pos);
+    }
+
+    // Find and Draw Visible Triangles
+    for (i32 i = 0; i < nLineIndices; i += 2)
+    {
+        vec3 a = vertices[lines[i]].pos;
+        vec3 b = vertices[lines[i + 1]].pos;
+        DrawLine(pixelBuffer, a, b, c);
+    }
+}
+
+static void DrawAxis3D(
+    vec3 *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color *colors,
+    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
+{
+    // Apply Transformations
+    for (i32 i = 0; i < nVertices; i++)
+    {
+        vertices[i] = vertices[i] * rotation + translation;
+        TransformVertexToScreen(st, &vertices[i]);
+    }
+
+    // Find and Draw Visible Triangles
+    for (i32 i = 0; i < nLineIndices; i += 2)
+    {
+        vec3 a = vertices[lines[i]];
+        vec3 b = vertices[lines[i + 1]];
+        DrawLine(pixelBuffer, a, b, colors[i / 2]);
     }
 }
 

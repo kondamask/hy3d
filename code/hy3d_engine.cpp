@@ -133,7 +133,7 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
     DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
-    //state->cubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->cube.orientation);
+    state->cubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->cube.orientation);
     state->cube = MakeCubeSkinned(1.0f, state->cube.orientation);
 
     // NOTE:  Apply Transformations
@@ -141,36 +141,20 @@ static void Render(hy3d_engine *e, engine_state *state)
                     RotateY(state->cube.orientation.thetaY) *
                     RotateZ(state->cube.orientation.thetaZ);
     vec3 translation = {0.0f, 0.0f, state->cubeZ};
-    DrawObject(state->cube.vertices, state->cube.nVertices,
-               state->cube.indices, state->cube.nIndices,
-               rotation, translation, &state->texture,
-               &e->pixelBuffer, &e->screenTransformer);
+    DrawObjectTextured(state->cube.vertices, state->cube.nVertices,
+                       state->cube.indices, state->cube.nIndices,
+                       rotation, translation, &state->texture,
+                       &e->pixelBuffer, &e->screenTransformer);
+    DrawAxis3D(state->cubeAxis.vertices, state->cubeAxis.nVertices,
+               state->cubeAxis.lines, state->cubeAxis.nLinesVertices, state->cubeAxis.colors,
+               rotation, translation, &e->pixelBuffer, &e->screenTransformer);
 
-    //for (int i = 0; i < state->cubeAxis.nVertices; i++)
-    //{
-    //    state->cubeAxis.vertices[i] *= rotation;
-    //    state->cubeAxis.vertices[i] += translation;
-    //}
-
-    // NOTE:  Transform to sceen
-    //for (int i = 0; i < state->cubeAxis.nVertices; i++)
-    //    e->screenTransformer.Transform(state->cubeAxis.vertices[i]);
-
-    //if (state->drawCubeOutline)
-    //{
-    //    for (int i = 0; i < state->cube.nLinesVertices; i += 2)
-    //    {
-    //        vertex a = state->cube.vertices[state->cube.lines[i]];
-    //        vertex b = state->cube.vertices[state->cube.lines[i + 1]];
-    //        DrawLine(&e->pixelBuffer, a, b, {255, 255, 255});
-    //    }
-    //}
-    //for (int i = 0; i < state->cubeAxis.nLinesVertices; i += 2)
-    //{
-    //    vec3 a = state->cubeAxis.vertices[state->cubeAxis.lines[i]];
-    //    vec3 b = state->cubeAxis.vertices[state->cubeAxis.lines[i + 1]];
-    //    DrawLine(&e->pixelBuffer, a, b, state->cubeAxis.colors[i / 2]);
-    //}
+    if (state->drawCubeOutline)
+    {
+        DrawObjectOutline(state->cube.vertices, state->cube.nVertices,
+                          state->cube.lines, state->cube.nLineIndices, {150, 150, 150},
+                          rotation, translation, &e->pixelBuffer, &e->screenTransformer);
+    }
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

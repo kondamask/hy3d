@@ -1,20 +1,9 @@
 #pragma once
-#include "hy3d_vector.h"
-#include "hy3d_matrix.h"
-#include "hy3d_objects.h"
 #include "hy3d_types.h"
+#include "hy3d_graphics.h"
+#include "hy3d_renderer.h"
+#include "hy3d_objects.h"
 #include <chrono>
-
-// TODO: Make this an actual assetion
-#if 1
-#define ASSERT(Expression) \
-    if (!(Expression))     \
-    {                      \
-        *(int *)0 = 0;     \
-    }
-#else
-#define ASSERT(Expression)
-#endif
 
 #define KILOBYTES(val) (val * 1024LL)
 #define MEGABYTES(val) (KILOBYTES(val) * 1024LL)
@@ -36,6 +25,32 @@ typedef DEBUG_WRITE_FILE(debug_write_file);
 #define DEBUG_FREE_FILE(name) void name(void *memory)
 typedef DEBUG_FREE_FILE(debug_free_file);
 
+#pragma pack(push, 1)
+struct bitmap_header
+{
+    u16 fileType;
+    u32 fileSize;
+    u16 reserved1;
+    u16 reserved2;
+    u32 bitmapOffset;
+    u32 size;
+    i32 width;
+    i32 height;
+    u16 planes;
+    u16 bitsPerPixel;
+    u32 compression;
+    u32 sizeOfBitmap;
+    i32 horzResolution;
+    i32 vertResolution;
+    u32 colorsUsed;
+    u32 colorsImportant;
+
+    u32 redMask;
+    u32 greenMask;
+    u32 blueMask;
+};
+#pragma pack(pop)
+
 struct engine_memory
 {
     bool isInitialized;
@@ -47,41 +62,6 @@ struct engine_memory
     debug_read_file *DEBUGReadFile;
     debug_write_file *DEBUGWriteFile;
     debug_free_file *DEBUGFreeFileMemory;
-};
-
-struct pixel_buffer
-{
-    void *memory;
-    i16 width;
-    i16 height;
-    i8 bytesPerPixel;
-    i32 size;
-};
-
-struct loaded_bitmap
-{
-    i16 width;
-    i16 height;
-    f32 posX;
-    f32 posY;
-    f32 opacity;
-    u32 *pixels;
-
-    u32 GetColorU32(i32 x, i32 y)
-    {
-        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
-        return pixels[x + y * width];
-    }
-
-    color GetColorRGB(i32 x, i32 y)
-    {
-        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
-        u32 c = *(pixels + y * width + x);
-        u8 r = (c >> 16) & 0xFF;
-        u8 g = (c >> 8) & 0xFF;
-        u8 b = (c >> 0) & 0xFF;
-        return {r, g, b};
-    }
 };
 
 struct engine_state
@@ -96,43 +76,6 @@ struct engine_state
     loaded_bitmap texture;
     f32 logoVelX;
     f32 logoVelY;
-};
-
-// TODO: add Z later
-// NOTE:
-// The HY3D space is a 3d space where
-// Y IS UP
-// X IS RIGHT
-// Z IS INTO THE SCREEN
-// The origin (0,0,0) is in the center of the screen.
-// We normalize the coordinates so that the far right, left, top and down
-// take values -1.0 and +1.0
-struct space3d
-{
-    f32 left;
-    f32 right;
-    f32 top;
-    f32 bottom;
-    f32 width;
-    f32 height;
-};
-
-struct screen_transformer
-{
-    f32 xFactor, yFactor;
-
-    vec3 GetTransformed(vec3 v)
-    {
-        f32 zInv = 1 / v.z;
-        v.x = (v.x * zInv + 1.0f) * xFactor;
-        v.y = (v.y * zInv + 1.0f) * yFactor;
-        return v;
-    }
-
-    void Transform(vec3 &v)
-    {
-        v = GetTransformed(v);
-    }
 };
 
 enum KEYBOARD_BUTTON

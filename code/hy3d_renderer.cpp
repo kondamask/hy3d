@@ -1,10 +1,12 @@
 #include "hy3d_renderer.h"
 
-static inline void TransformVertexToScreen(screen_transformer *st, vec3 *v)
+static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
 {
-    f32 zInv = 1.0f / v->z;
-    v->x = (v->x * zInv + 1.0f) * st->xFactor;
-    v->y = (v->y * zInv + 1.0f) * st->yFactor;
+    f32 zInv = 1.0f / v->pos.z;
+    *v *= zInv;
+    v->pos.x = (v->pos.x + 1.0f) * st->xFactor;
+    v->pos.y = (v->pos.y + 1.0f) * st->yFactor;
+    v->pos.z = zInv;
 }
 
 static vertex Prestep(i32 rounded, f32 original, vertex step)
@@ -180,6 +182,7 @@ static void DrawFlatTriangleTextured(
     vertex left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
     vertex right = rightStart + Prestep(yTop, yTopF32, -dvRight);
     vertex leftToRightStep;
+    f32 objectSpazeZ;
     for (i16 y = yTop; y > yBottom; y--)
     {
         xLeft = RoundF32toI16(left.pos.x);
@@ -189,7 +192,9 @@ static void DrawFlatTriangleTextured(
 
         for (i16 x = xLeft; x < xRight; x++, texCoord += leftToRightStep)
         {
-            u32 c = GetTextureColorU32(bmp, texCoord.uv);
+            objectSpazeZ = 1.0f / texCoord.pos.z;
+            vertex attr = texCoord * objectSpazeZ;
+            u32 c = GetTextureColorU32(bmp, attr.uv);
             PutPixel(pixelBuffer, x, y, c);
         }
         left -= dvLeft;
@@ -250,9 +255,9 @@ static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loade
     processed_triangle_result p = ProcessTriangle(&t);
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
-        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
     else
-        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
 
     //Bottom Half | Flat Top
     if (p.isLeftSideMajor)
@@ -277,9 +282,9 @@ static void DrawObjectTextured(
         bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
         if (isVisible)
         {
-            TransformVertexToScreen(st, &t.v0.pos);
-            TransformVertexToScreen(st, &t.v1.pos);
-            TransformVertexToScreen(st, &t.v2.pos);
+            TransformVertexToScreen(st, &t.v0);
+            TransformVertexToScreen(st, &t.v1);
+            TransformVertexToScreen(st, &t.v2);
 
             DrawTriangleTextured(pixelBuffer, t, bmp);
         }
@@ -293,7 +298,7 @@ static void DrawObjectOutline(
     // Apply Transformations
     for (i32 i = 0; i < nVertices; i++)
     {
-        TransformVertexToScreen(st, &vertices[i].pos);
+        TransformVertexToScreen(st, &vertices[i]);
     }
 
     // Find and Draw Visible Triangles
@@ -306,21 +311,21 @@ static void DrawObjectOutline(
 }
 
 static void DrawAxis3D(
-    vec3 *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color *colors,
+    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color *colors,
     mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
 {
     // Apply Transformations
     for (i32 i = 0; i < nVertices; i++)
     {
-        vertices[i] = vertices[i] * rotation + translation;
+        vertices[i].pos = vertices[i].pos * rotation + translation;
         TransformVertexToScreen(st, &vertices[i]);
     }
 
     // Find and Draw Visible Triangles
     for (i32 i = 0; i < nLineIndices; i += 2)
     {
-        vec3 a = vertices[lines[i]];
-        vec3 b = vertices[lines[i + 1]];
+        vec3 a = vertices[lines[i]].pos;
+        vec3 b = vertices[lines[i + 1]].pos;
         DrawLine(pixelBuffer, a, b, colors[i / 2]);
     }
 }

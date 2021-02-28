@@ -63,7 +63,7 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     state->logo.opacity = 0.3f;
     state->logoVelX = 100.0f;
     state->logoVelY = 80.0f;
-    LoadBitmap(&state->texture, memory->DEBUGReadFile, "minecraft_grass.bmp");
+    LoadBitmap(&state->texture, memory->DEBUGReadFile, "peepo.bmp");
     state->texture.opacity = 1.0f;
 
     memory->isInitialized = true;
@@ -78,7 +78,7 @@ static void Update(hy3d_engine *e, engine_state *state)
     e->frameStart = frameEnd;
 
     // Cube Control
-    f32 speed = 1.5f * dt;
+    f32 speed = 2.5f * dt;
     if (e->input.keyboard.isPressed[UP])
     {
         state->cube.orientation.thetaX += speed;
@@ -148,7 +148,6 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawAxis3D(state->cubeAxis.vertices, state->cubeAxis.nVertices,
                state->cubeAxis.lines, state->cubeAxis.nLinesVertices, state->cubeAxis.colors,
                rotation, translation, &e->pixelBuffer, &e->screenTransformer);
-
     if (state->drawCubeOutline)
     {
         DrawObjectOutline(state->cube.vertices, state->cube.nVertices,

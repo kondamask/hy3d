@@ -76,15 +76,15 @@ inline vertex operator*(vertex b, f32 a)
     return a * b;
 }
 
-inline vertex operator/(vertex a, f32 b)
-{
-    return {a.pos * (1.0f / b), a.uv * (1.0f / b)};
-}
-
 inline vertex operator*=(vertex &a, f32 b)
 {
     a = b * a;
     return a;
+}
+
+inline vertex operator/(vertex a, f32 b)
+{
+    return {a.pos * (1.0f / b), a.uv * (1.0f / b)};
 }
 
 inline vertex operator-(vertex a)

@@ -123,7 +123,7 @@ static cube_skinned MakeCubeSkinned(f32 side, orientation o)
 struct axis3d
 {
     i8 nVertices = 4;
-    vec3 vertices[4];
+    vertex vertices[4];
     i8 nLinesVertices = 6;
     i8 lines[6] = {
         0, 1,
@@ -139,13 +139,13 @@ struct axis3d
 static axis3d MakeAxis3D(vec3 center, f32 length, orientation o)
 {
     axis3d result;
-    result.vertices[0] = center;
-    result.vertices[1] = {length, 0.0f, 0.0f};
-    result.vertices[1] += center;
-    result.vertices[2] = {0.0f, length, 0.0f};
-    result.vertices[2] += center;
-    result.vertices[3] = {0.0f, 0.0f, length};
-    result.vertices[3] += center;
+    result.vertices[0].pos = center;
+    result.vertices[1].pos = {length, 0.0f, 0.0f};
+    result.vertices[1].pos += center;
+    result.vertices[2].pos = {0.0f, length, 0.0f};
+    result.vertices[2].pos += center;
+    result.vertices[3].pos = {0.0f, 0.0f, length};
+    result.vertices[3].pos += center;
     result.orientation.thetaX = o.thetaX;
     result.orientation.thetaY = o.thetaY;
     result.orientation.thetaZ = o.thetaZ;

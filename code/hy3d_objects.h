@@ -3,7 +3,9 @@
 
 struct orientation
 {
-    f32 thetaX, thetaY, thetaZ;
+    f32 thetaX;
+    f32 thetaY;
+    f32 thetaZ;
 };
 
 struct cube

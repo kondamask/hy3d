@@ -65,14 +65,18 @@ struct engine_memory
 
 struct engine_state
 {
-    cube_skinned cube;
-    f32 cubeZ;
-    bool drawCubeOutline;
-    axis3d cubeAxis;
+    cube_skinned peepoCube;
+    loaded_bitmap peepoTexture;
+    axis3d peepoCubeAxis;
+    f32 peepoCubeZ;
+    bool peepoCubeDrawOutline;
+
+    cube_skinned crateCube;
+    loaded_bitmap crateTexture;
+    f32 crateCubeZ;
 
     loaded_bitmap background;
     loaded_bitmap logo;
-    loaded_bitmap texture;
     f32 logoVelX;
     f32 logoVelY;
 };
@@ -167,10 +171,11 @@ struct hy3d_engine
     screen_transformer screenTransformer;
     std::chrono::steady_clock::time_point frameStart;
 
-    void InitializePixelBuffer(void *pixelBufferMemory, i16 width, i16 height, i8 bytesPerPixel, i32 bufferSize)
+    void InitializePixelBuffer(void *pixelBufferMemory, f32 *zBufferMemory, i16 width, i16 height, i8 bytesPerPixel, i32 bufferSize)
     {
         pixelBuffer = {};
         pixelBuffer.memory = pixelBufferMemory;
+        pixelBuffer.zBuffer = zBufferMemory;
         pixelBuffer.width = width;
         pixelBuffer.height = height;
         pixelBuffer.bytesPerPixel = bytesPerPixel;

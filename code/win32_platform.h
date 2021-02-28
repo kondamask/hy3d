@@ -13,6 +13,7 @@ struct win32_pixel_buffer
 {
 	BITMAPINFO info;
 	void *memory;
+	void *zBuffer;
 	i16 width;
 	i16 height;
 	i32 size;

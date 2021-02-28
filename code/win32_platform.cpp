@@ -85,6 +85,7 @@ static inline void Win32InitializeBackbuffer(win32_pixel_buffer &pixel_buffer, i
 
 	pixel_buffer.size = pixel_buffer.width * pixel_buffer.height * pixel_buffer.bytesPerPixel;
 	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
+	pixel_buffer.zBuffer = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
 static void Win32ClearBackbuffer(win32_pixel_buffer &pixel_buffer)
@@ -92,8 +93,10 @@ static void Win32ClearBackbuffer(win32_pixel_buffer &pixel_buffer)
 	if (pixel_buffer.memory)
 	{
 		VirtualFree(pixel_buffer.memory, 0, MEM_RELEASE);
+		VirtualFree(pixel_buffer.zBuffer, 0, MEM_RELEASE);
 	}
 	pixel_buffer.memory = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
+	pixel_buffer.zBuffer = VirtualAlloc(0, pixel_buffer.size, MEM_COMMIT, PAGE_READWRITE);
 }
 
 static void Win32DisplayPixelBuffer(win32_pixel_buffer &pixel_buffer, HDC deviceContext)
@@ -514,9 +517,9 @@ int CALLBACK WinMain(
 			Win32LoadEngineCode(&engineCode, sourceDLLPath, sourceDLLCopyPath);
 
 			hy3d_engine engine = {};
-			engine.InitializePixelBuffer(window.pixelBuffer.memory,
-									window.pixelBuffer.width, window.pixelBuffer.height,
-									window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
+			engine.InitializePixelBuffer(window.pixelBuffer.memory, (f32 *)window.pixelBuffer.zBuffer,
+										 window.pixelBuffer.width, window.pixelBuffer.height,
+										 window.pixelBuffer.bytesPerPixel, window.pixelBuffer.size);
 
 			i32 quitMessage = -1;
 			while (Win32ProcessMessages(window, engine.input, quitMessage))

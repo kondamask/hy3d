@@ -200,6 +200,25 @@ static void DrawTriangleSolidColor(pixel_buffer *pixelBuffer, triangle t, color 
         DrawFlatTriangle(pixelBuffer, c, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
+static inline void ClearZBuffer(pixel_buffer *pixelBuffer)
+{
+    i32 zBufferSize = pixelBuffer->size / pixelBuffer->bytesPerPixel;
+    for (i32 i = 0; i < zBufferSize; i++)
+        pixelBuffer->zBuffer[i] = FLT_MAX;
+}
+
+static bool UpdateZBuffer(pixel_buffer *pixelBuffer, i32 x, i32 y, f32 value)
+{
+    ASSERT(x >= 0 && x < pixelBuffer->width && y >= 0 && y < pixelBuffer->height)
+    f32 *old = &pixelBuffer->zBuffer[x + y * pixelBuffer->width];
+    if (*old > value)
+    {
+        *old = value;
+        return true;
+    }
+    return false;
+}
+
 static void DrawFlatTriangleTextured(
     pixel_buffer *pixelBuffer, loaded_bitmap *bmp,
     vertex leftStart, vertex rightStart,
@@ -225,9 +244,12 @@ static void DrawFlatTriangleTextured(
         for (i16 x = xLeft; x < xRight; x++, texCoord += leftToRightStep)
         {
             objectSpazeZ = 1.0f / texCoord.pos.z;
-            vertex attr = texCoord * objectSpazeZ;
-            u32 c = GetTextureColorU32(bmp, attr.uv);
-            PutPixel(pixelBuffer, x, y, c);
+            if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
+            {
+                vertex attr = texCoord * objectSpazeZ;
+                u32 c = GetTextureColorU32(bmp, attr.uv);
+                PutPixel(pixelBuffer, x, y, c);
+            }
         }
         left -= dvLeft;
         right -= dvRight;

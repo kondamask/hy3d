@@ -7,6 +7,7 @@
 struct pixel_buffer
 {
     void *memory;
+    f32 *zBuffer;
     i16 width;
     i16 height;
     i8 bytesPerPixel;

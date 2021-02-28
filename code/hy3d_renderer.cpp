@@ -1,5 +1,37 @@
 #include "hy3d_renderer.h"
 
+static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, color c)
+{
+    // Pixel 32 bits
+    // Memory:      BB GG RR xx
+    // Register:    xx RR GG BB
+
+    u32 *pixel = (u32 *)pixelBuffer->memory + y * pixelBuffer->width + x;
+    bool isInBuffer =
+        y >= 0 &&
+        y < pixelBuffer->height &&
+        x >= 0 &&               // left
+        x < pixelBuffer->width; // right
+    if (isInBuffer)
+        *pixel = (c.r << 16) | (c.g << 8) | (c.b);
+}
+
+static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, u32 c)
+{
+    // Pixel 32 bits
+    // Memory:      BB GG RR xx
+    // Register:    xx RR GG BB
+
+    u32 *pixel = (u32 *)pixelBuffer->memory + y * pixelBuffer->width + x;
+    bool isInBuffer =
+        y >= 0 &&
+        y < pixelBuffer->height &&
+        x >= 0 &&               // left
+        x < pixelBuffer->width; // right
+    if (isInBuffer)
+        *pixel = c;
+}
+
 static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
 {
     f32 zInv = 1.0f / v->pos.z;
@@ -9,7 +41,7 @@ static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
     v->pos.z = zInv;
 }
 
-static vertex Prestep(i32 rounded, f32 original, vertex step)
+static inline vertex Prestep(i32 rounded, f32 original, vertex step)
 {
     return (step * (original - (f32)rounded + 0.5f));
 }

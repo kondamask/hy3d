@@ -1,6 +1,5 @@
 #pragma once
 #include "hy3d_types.h"
-#include "hy3d_graphics.h"
 #include "hy3d_renderer.h"
 #include "hy3d_objects.h"
 #include <chrono>

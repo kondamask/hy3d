@@ -1,6 +1,5 @@
 #pragma once
-#include "hy3d_vector.h"
-#include "hy3d_types.h"
+#include "hy3d_math.h"
 
 struct orientation
 {

@@ -1,9 +1,31 @@
 #pragma once
 #include "hy3d_types.h"
-#include "hy3d_graphics.h"
-#include "hy3d_vector.h"
-#include "hy3d_matrix.h"
+#include "hy3d_math.h"
+#include "hy3d_vertex.h"
 #include <math.h>
+
+struct pixel_buffer
+{
+    void *memory;
+    i16 width;
+    i16 height;
+    i8 bytesPerPixel;
+    i32 size;
+};
+
+struct color
+{
+    u8 r;
+    u8 g;
+    u8 b;
+};
+
+struct triangle
+{
+    vertex v0;
+    vertex v1;
+    vertex v2;
+};
 
 // TODO: add Z later
 // NOTE:
@@ -30,73 +52,30 @@ struct screen_transformer
     f32 yFactor;
 };
 
-struct vertex
+struct loaded_bitmap
 {
-    vec3 pos; // world position
-    vec2 uv;  // texture coordinate
+    i16 width;
+    i16 height;
+    f32 posX;
+    f32 posY;
+    f32 opacity;
+    u32 *pixels;
 
-    inline vertex interpolateTo(vertex A, vertex B)
+    u32 GetColorU32(i32 x, i32 y)
     {
-        f32 alpha = (A.pos.y - pos.y) / (B.pos.y - pos.y);
-        return {
-            lerp(pos, A.pos, B.pos, alpha),
-            lerp(uv, A.uv, B.uv, alpha)};
+        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
+        return pixels[x + y * width];
     }
-};
 
-inline vertex operator+(vertex a, vertex b)
-{
-    return {a.pos + b.pos, a.uv + b.uv};
-}
-
-inline vertex operator-(vertex a, vertex b)
-{
-    return {a.pos - b.pos, a.uv - b.uv};
-}
-
-inline vertex operator+=(vertex &a, vertex b)
-{
-    a = a + b;
-    return a;
-}
-
-inline vertex operator-=(vertex &a, vertex b)
-{
-    a = a - b;
-    return a;
-}
-
-inline vertex operator*(f32 a, vertex b)
-{
-    return {a * b.pos, a * b.uv};
-}
-
-inline vertex operator*(vertex b, f32 a)
-{
-    return a * b;
-}
-
-inline vertex operator*=(vertex &a, f32 b)
-{
-    a = b * a;
-    return a;
-}
-
-inline vertex operator/(vertex a, f32 b)
-{
-    return {a.pos * (1.0f / b), a.uv * (1.0f / b)};
-}
-
-inline vertex operator-(vertex a)
-{
-    return {-a.pos, -a.uv};
-}
-
-struct triangle
-{
-    vertex v0;
-    vertex v1;
-    vertex v2;
+    color GetColorRGB(i32 x, i32 y)
+    {
+        ASSERT(x >= 0 && x < width && y >= 0 && y < height)
+        u32 c = *(pixels + y * width + x);
+        u8 r = (c >> 16) & 0xFF;
+        u8 g = (c >> 8) & 0xFF;
+        u8 b = (c >> 0) & 0xFF;
+        return {r, g, b};
+    }
 };
 
 struct processed_triangle_result

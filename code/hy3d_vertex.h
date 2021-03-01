@@ -63,3 +63,14 @@ inline vertex operator-(vertex a)
 {
     return {-a.pos, -a.uv};
 }
+
+// NOTE:  It looks like that returning the negative slope is more accurate.
+inline vertex VertexSlopeX(vertex a, vertex b)
+{
+    return (-(b - a) / (b.pos.x - a.pos.x));
+}
+
+inline vertex VertexSlopeY(vertex a, vertex b)
+{
+    return (-(b - a) / (b.pos.y - a.pos.y));
+}

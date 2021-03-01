@@ -139,22 +139,22 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
     DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
-    state->crateCube = MakeCubeSkinned(1.0f, state->crateCube.orientation);
-    mat3 rotation = RotateX(state->crateCube.orientation.thetaX) *
-                    RotateY(state->crateCube.orientation.thetaY) *
-                    RotateZ(state->crateCube.orientation.thetaZ);
-    vec3 translation = {0.0f, 0.0f, state->crateCubeZ};
-    DrawObjectTextured(state->crateCube.vertices, state->crateCube.nVertices,
-                       state->crateCube.indices, state->crateCube.nIndices,
-                       rotation, translation, &state->crateTexture,
-                       &e->pixelBuffer, &e->screenTransformer);
+    //state->crateCube = MakeCubeSkinned(1.0f, state->crateCube.orientation);
+    //mat3 rotation = RotateX(state->crateCube.orientation.thetaX) *
+    //                RotateY(state->crateCube.orientation.thetaY) *
+    //                RotateZ(state->crateCube.orientation.thetaZ);
+    //vec3 translation = {0.0f, 0.0f, state->crateCubeZ};
+    //DrawObjectTextured(state->crateCube.vertices, state->crateCube.nVertices,
+    //                   state->crateCube.indices, state->crateCube.nIndices,
+    //                   rotation, translation, &state->crateTexture,
+    //                   &e->pixelBuffer, &e->screenTransformer);
 
     state->peepoCube = MakeCubeSkinned(1.0f, state->peepoCube.orientation);
     state->peepoCubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->peepoCube.orientation);
-    rotation = RotateX(state->peepoCube.orientation.thetaX) *
+    mat3 rotation = RotateX(state->peepoCube.orientation.thetaX) *
                RotateY(state->peepoCube.orientation.thetaY) *
                RotateZ(state->peepoCube.orientation.thetaZ);
-    translation = {0.0f, 0.0f, state->peepoCubeZ};
+    vec3 translation = {0.0f, 0.0f, state->peepoCubeZ};
     DrawObjectTextured(state->peepoCube.vertices, state->peepoCube.nVertices,
                        state->peepoCube.indices, state->peepoCube.nIndices,
                        rotation, translation, &state->peepoTexture,

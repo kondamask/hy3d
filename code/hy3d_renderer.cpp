@@ -108,9 +108,9 @@ static processed_triangle_result ProcessTriangle(triangle *t)
     result.isLeftSideMajor = t->v1.pos.x > result.split.pos.x;
 
     // Calculate Slopes and Texture Lookup steps
-    result.dv01 = (t->v1 - t->v0) / (t->v1.pos.y - t->v0.pos.y);
-    result.dv02 = (t->v2 - t->v0) / (t->v2.pos.y - t->v0.pos.y);
-    result.dv12 = (t->v2 - t->v1) / (t->v2.pos.y - t->v1.pos.y);
+    result.dv01 = -VertexSlopeY(t->v0, t->v1);
+    result.dv02 = -VertexSlopeY(t->v0, t->v2);
+    result.dv12 = -VertexSlopeY(t->v1, t->v2);
 
     return result;
 }
@@ -238,10 +238,10 @@ static void DrawFlatTriangleTextured(
     {
         xLeft = RoundF32toI16(left.pos.x);
         xRight = RoundF32toI16(right.pos.x);
-        leftToRightStep = (right - left) / (right.pos.x - left.pos.x);
+        leftToRightStep = VertexSlopeX(left, right);
         texCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
 
-        for (i16 x = xLeft; x < xRight; x++, texCoord += leftToRightStep)
+        for (i16 x = xLeft; x < xRight; x++, texCoord -= leftToRightStep)
         {
             objectSpazeZ = 1.0f / texCoord.pos.z;
             if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))

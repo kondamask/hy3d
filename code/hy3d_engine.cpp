@@ -53,25 +53,30 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     e->screenTransformer.xFactor = e->pixelBuffer.width / e->space.width;
     e->screenTransformer.yFactor = e->pixelBuffer.width / e->space.height;
 
-    state->peepoCube.orientation = {0.0f, 0.0f, 0.0f};
-    state->peepoCubeZ = 2.0f;
-    state->peepoCubeDrawOutline = false;
-
-    state->crateCube.orientation = {0.3f, -0.4f, 0.0f};
-    state->crateCubeZ = 2.0f;
-
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
     state->background.opacity = 1.0f;
     LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d_gimp.bmp");
     state->logo.opacity = 0.3f;
     state->logoVelX = 100.0f;
     state->logoVelY = 80.0f;
+
+    state->peepoCube.orientation = {0.0f, 0.0f, 0.0f};
+    state->peepoCubeZ = 2.0f;
+    state->peepoCubeDrawOutline = false;
     LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
     state->peepoTexture.opacity = 1.0f;
+
+    state->crateCube.orientation = {0.3f, -0.4f, 0.0f};
+    state->crateCubeZ = 2.0f;
     LoadBitmap(&state->crateTexture, memory->DEBUGReadFile, "crate.bmp");
     state->crateTexture.opacity = 1.0f;
+
     LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
     state->crateTexture.opacity = 1.0f;
+    state->planeWave.time = 0.0f;
+    state->planeWave.amplitude = 0.05f;
+    state->planeWave.waveFreq = 10.0f;
+    state->planeWave.scrollFreq = 5.0f;
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -83,6 +88,8 @@ static void Update(hy3d_engine *e, engine_state *state)
     std::chrono::duration<f32> frameTime = frameEnd - e->frameStart;
     f32 dt = frameTime.count();
     e->frameStart = frameEnd;
+
+    state->planeWave.time += dt;
 
     // Cube Control
     f32 speed = 2.5f * dt;
@@ -153,18 +160,22 @@ static void Render(hy3d_engine *e, engine_state *state)
     mat3 rotation;
     vec3 translation;
 
-    state->plane = MakeSquarePlane(1.0f, state->peepoCube.orientation);
+    state->plane = MakeSquarePlane(1.0f, state->plane.orientation);
     state->peepoCube = MakeCubeSkinned(1.0f, state->peepoCube.orientation);
     state->peepoCubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->peepoCube.orientation);
 
     rotation = RotateX(state->plane.orientation.thetaX) *
                RotateY(state->plane.orientation.thetaY) *
                RotateZ(state->plane.orientation.thetaZ);
-    translation = {0.0f, 2.0f, 3.0f};
-    DrawObjectTextured(state->plane.vertices, state->plane.nVertices,
-                       state->plane.indices, state->plane.nIndices,
-                       rotation, translation, &state->planeTexture,
-                       &e->pixelBuffer, &e->screenTransformer);
+    translation = {0.0f, 1.5f, 2.0f};
+    state->planeWave.amplitude = 0.05f;
+    state->planeWave.waveFreq = 11.0f;
+    state->planeWave.scrollFreq = 8.0f;
+    DrawObjectTexturedWithVShader(state->plane.vertices, state->plane.nVertices,
+                                 state->plane.indices, state->plane.nIndices,
+                                 rotation, translation, &state->planeTexture,
+                                 VertexShaderWave, &state->planeWave,
+                                 &e->pixelBuffer, &e->screenTransformer);
 
     rotation = RotateX(state->peepoCube.orientation.thetaX) *
                RotateY(state->peepoCube.orientation.thetaY) *

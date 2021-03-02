@@ -347,6 +347,41 @@ static void DrawObjectTextured(
     }
 }
 
+static void VertexShaderWave(vertex *v, void *properties)
+{
+    vertex_shader_wave *wave = (vertex_shader_wave *)properties;
+    v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
+}
+
+static void DrawObjectTexturedWithVShader(
+    vertex *vertices, i32 nVertices, i8 *indices, i32 nIndices,
+    mat3 rotation, vec3 translation, loaded_bitmap *bmp,
+    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties,
+    pixel_buffer *pixelBuffer, screen_transformer *st)
+{
+    // Apply Transformations
+    for (i32 i = 0; i < nVertices; i++)
+    {
+        vertices[i].pos = vertices[i].pos * rotation + translation;
+        VertexShader(&vertices[i], vertexShaderProperties);
+    }
+
+    // Find and Draw Visible Triangles
+    for (i32 i = 0; i < nIndices; i += 3)
+    {
+        triangle t = {vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]]};
+        bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
+        if (isVisible)
+        {
+            TransformVertexToScreen(st, &t.v0);
+            TransformVertexToScreen(st, &t.v1);
+            TransformVertexToScreen(st, &t.v2);
+
+            DrawTriangleTextured(pixelBuffer, t, bmp);
+        }
+    }
+}
+
 static void DrawObjectOutline(
     vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color c,
     mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)

@@ -77,6 +77,7 @@ struct engine_state
 
     square_plane10 plane;
     loaded_bitmap planeTexture;
+    vertex_shader_wave planeWave;
 
     loaded_bitmap background;
     loaded_bitmap logo;

@@ -87,3 +87,11 @@ struct processed_triangle_result
     vertex dv12;
     bool isLeftSideMajor;
 };
+
+struct vertex_shader_wave
+{
+    f32 amplitude;
+    f32 waveFreq;
+    f32 scrollFreq;
+    f32 time;
+};

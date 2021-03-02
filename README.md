@@ -10,4 +10,4 @@
     4. working directory is \data
 
 ## Latest Preview:
-![Alt Text](previews/6_280221.gif "Preview gif")
+![Alt Text](previews/7_020321.gif "Preview gif")

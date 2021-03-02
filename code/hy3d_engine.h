@@ -75,6 +75,9 @@ struct engine_state
     loaded_bitmap crateTexture;
     f32 crateCubeZ;
 
+    square_plane10 plane;
+    loaded_bitmap planeTexture;
+
     loaded_bitmap background;
     loaded_bitmap logo;
     f32 logoVelX;

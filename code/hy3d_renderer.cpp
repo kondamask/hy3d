@@ -209,12 +209,14 @@ static inline void ClearZBuffer(pixel_buffer *pixelBuffer)
 
 static bool UpdateZBuffer(pixel_buffer *pixelBuffer, i32 x, i32 y, f32 value)
 {
-    ASSERT(x >= 0 && x < pixelBuffer->width && y >= 0 && y < pixelBuffer->height)
-    f32 *old = &pixelBuffer->zBuffer[x + y * pixelBuffer->width];
-    if (*old > value)
+    if (x >= 0 && x < pixelBuffer->width && y >= 0 && y < pixelBuffer->height)
     {
-        *old = value;
-        return true;
+        f32 *old = &pixelBuffer->zBuffer[x + y * pixelBuffer->width];
+        if (*old > value)
+        {
+            *old = value;
+            return true;
+        }
     }
     return false;
 }

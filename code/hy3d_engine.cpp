@@ -70,6 +70,8 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     state->peepoTexture.opacity = 1.0f;
     LoadBitmap(&state->crateTexture, memory->DEBUGReadFile, "crate.bmp");
     state->crateTexture.opacity = 1.0f;
+    LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
+    state->crateTexture.opacity = 1.0f;
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -81,7 +83,6 @@ static void Update(hy3d_engine *e, engine_state *state)
     std::chrono::duration<f32> frameTime = frameEnd - e->frameStart;
     f32 dt = frameTime.count();
     e->frameStart = frameEnd;
-
 
     // Cube Control
     f32 speed = 2.5f * dt;
@@ -149,12 +150,26 @@ static void Render(hy3d_engine *e, engine_state *state)
     //                   rotation, translation, &state->crateTexture,
     //                   &e->pixelBuffer, &e->screenTransformer);
 
+    mat3 rotation;
+    vec3 translation;
+
+    state->plane = MakeSquarePlane(1.0f, state->peepoCube.orientation);
     state->peepoCube = MakeCubeSkinned(1.0f, state->peepoCube.orientation);
     state->peepoCubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->peepoCube.orientation);
-    mat3 rotation = RotateX(state->peepoCube.orientation.thetaX) *
+
+    rotation = RotateX(state->plane.orientation.thetaX) *
+               RotateY(state->plane.orientation.thetaY) *
+               RotateZ(state->plane.orientation.thetaZ);
+    translation = {0.0f, 2.0f, 3.0f};
+    DrawObjectTextured(state->plane.vertices, state->plane.nVertices,
+                       state->plane.indices, state->plane.nIndices,
+                       rotation, translation, &state->planeTexture,
+                       &e->pixelBuffer, &e->screenTransformer);
+
+    rotation = RotateX(state->peepoCube.orientation.thetaX) *
                RotateY(state->peepoCube.orientation.thetaY) *
                RotateZ(state->peepoCube.orientation.thetaZ);
-    vec3 translation = {0.0f, 0.0f, state->peepoCubeZ};
+    translation = {0.0f, 0.0f, state->peepoCubeZ};
     DrawObjectTextured(state->peepoCube.vertices, state->peepoCube.nVertices,
                        state->peepoCube.indices, state->peepoCube.nIndices,
                        rotation, translation, &state->peepoTexture,

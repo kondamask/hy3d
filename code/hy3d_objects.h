@@ -152,3 +152,55 @@ static axis3d MakeAxis3D(vec3 center, f32 length, orientation o)
     result.orientation.thetaZ = o.thetaZ;
     return result;
 }
+
+struct square_plane10
+{
+    i8 trianglesPerSide = 10;
+    i8 nVertices = trianglesPerSide * trianglesPerSide;
+    vertex vertices[100];
+    i16 nIndices = trianglesPerSide * trianglesPerSide * 3 * 2;
+    i8 indices[600];
+    orientation orientation;
+};
+
+static square_plane10 MakeSquarePlane(f32 side, orientation o)
+{
+    square_plane10 result = {};
+    f32 posStep = side / ((f32)(result.trianglesPerSide - 1));
+    f32 texStep = 1.0f / ((f32)(result.trianglesPerSide - 1));
+    vec3 pos = {-side / 2.0f, -side / 2.0f, 0.0f}; // bottom left
+    vec2 uv = {};
+    for (i8 row = 0; row < result.trianglesPerSide; row++)
+    {
+        for (i8 col = 0; col < result.trianglesPerSide; col++)
+        {
+
+            result.vertices[row * result.trianglesPerSide + col].pos = pos;
+            result.vertices[row * result.trianglesPerSide + col].uv = uv;
+            pos.x += posStep;
+            uv.x += texStep;
+        }
+        pos.x = -side / 2.0f;
+        pos.y = (f32)(row + 1) * posStep - side / 2.0f;
+
+        uv.x = 0.0f;
+        uv.y = (f32)(row + 1) * texStep;
+    }
+    int tIndex = 0;
+    i8 vIndex = 0;
+    while ((tIndex + 5 < result.nIndices) && (vIndex + 11 < result.nVertices))
+    {
+        result.indices[tIndex] = vIndex;
+        result.indices[tIndex + 1] = vIndex + 10;
+        result.indices[tIndex + 2] = vIndex + 1;
+        tIndex += 3;
+
+        result.indices[tIndex] = vIndex + 10;
+        result.indices[tIndex + 1] = vIndex + 11;
+        result.indices[tIndex + 2] = vIndex + 1;
+        tIndex += 3;
+        vIndex++;
+    }
+    result.orientation = o;
+    return result;
+}

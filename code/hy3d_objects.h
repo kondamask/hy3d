@@ -1,6 +1,13 @@
 #pragma once
 #include "hy3d_math.h"
 
+typedef i32 triangle_index;
+
+static inline vec2 ConvertSkinToTextureCoord(f32 u, f32 v)
+{
+    return {u / 3.0f, v / 4.0f};
+}
+
 struct orientation
 {
     f32 thetaX;
@@ -8,7 +15,106 @@ struct orientation
     f32 thetaZ;
 };
 
+struct mesh
+{
+    i32 nVertices;
+    i32 nIndices;
+    vertex *vertices;
+    triangle_index *triangleIndices;
+};
+
 struct cube
+{
+    mesh *mesh;
+    orientation orientation;
+    vec3 pos;
+    f32 side;
+};
+
+static void LoadUnfoldedCubeMesh(mesh *mesh, f32 side)
+{
+    mesh->nVertices = 14;
+    mesh->nIndices = 36;
+    side /= 2.0f;
+
+    mesh->vertices[0].pos = {-side, -side, -side}; // 0
+    mesh->vertices[0].uv = {ConvertSkinToTextureCoord(1.0f, 3.0f)};
+    mesh->vertices[1].pos = {side, -side, -side}; // 1
+    mesh->vertices[1].uv = {ConvertSkinToTextureCoord(2.0f, 3.0f)};
+    mesh->vertices[2].pos = {-side, side, -side}; // 2
+    mesh->vertices[2].uv = {ConvertSkinToTextureCoord(1.0f, 4.0f)};
+    mesh->vertices[3].pos = {side, side, -side}; // 3
+    mesh->vertices[3].uv = {ConvertSkinToTextureCoord(2.0f, 4.0f)};
+    mesh->vertices[4].pos = {-side, -side, side}; // 4
+    mesh->vertices[4].uv = {ConvertSkinToTextureCoord(1.0f, 2.0f)};
+    mesh->vertices[5].pos = {side, -side, side}; // 5
+    mesh->vertices[5].uv = {ConvertSkinToTextureCoord(2.0f, 2.0f)};
+    mesh->vertices[6].pos = {-side, side, side}; // 6
+    mesh->vertices[6].uv = {ConvertSkinToTextureCoord(1.0f, 1.0f)};
+    mesh->vertices[7].pos = {side, side, side}; // 7
+    mesh->vertices[7].uv = {ConvertSkinToTextureCoord(2.0f, 1.0f)};
+    mesh->vertices[8].pos = {-side, side, -side}; // 8
+    mesh->vertices[8].uv = {ConvertSkinToTextureCoord(1.0f, 0.0f)};
+    mesh->vertices[9].pos = {side, side, -side}; // 9
+    mesh->vertices[9].uv = {ConvertSkinToTextureCoord(2.0f, 0.0f)};
+    mesh->vertices[10].pos = {-side, side, side}; // 10
+    mesh->vertices[10].uv = {ConvertSkinToTextureCoord(0.0f, 2.0f)};
+    mesh->vertices[11].pos = {-side, side, -side}; // 11
+    mesh->vertices[11].uv = {ConvertSkinToTextureCoord(0.0f, 3.0f)};
+    mesh->vertices[12].pos = {side, side, side}; // 12
+    mesh->vertices[12].uv = {ConvertSkinToTextureCoord(3.0f, 2.0f)};
+    mesh->vertices[13].pos = {side, side, -side}; // 13
+    mesh->vertices[13].uv = {ConvertSkinToTextureCoord(3.0f, 3.0f)};
+
+    mesh->triangleIndices[0] = 0;
+    mesh->triangleIndices[1] = 2;
+    mesh->triangleIndices[2] = 1;
+    mesh->triangleIndices[3] = 2;
+    mesh->triangleIndices[4] = 3;
+    mesh->triangleIndices[5] = 1;
+    mesh->triangleIndices[6] = 4;
+    mesh->triangleIndices[7] = 0;
+    mesh->triangleIndices[8] = 5;
+    mesh->triangleIndices[9] = 0;
+    mesh->triangleIndices[10] = 1;
+    mesh->triangleIndices[11] = 5;
+    mesh->triangleIndices[12] = 6;
+    mesh->triangleIndices[13] = 4;
+    mesh->triangleIndices[14] = 7;
+    mesh->triangleIndices[15] = 4;
+    mesh->triangleIndices[16] = 5;
+    mesh->triangleIndices[17] = 7;
+    mesh->triangleIndices[18] = 8;
+    mesh->triangleIndices[19] = 6;
+    mesh->triangleIndices[20] = 9;
+    mesh->triangleIndices[21] = 6;
+    mesh->triangleIndices[22] = 7;
+    mesh->triangleIndices[23] = 9;
+    mesh->triangleIndices[24] = 10;
+    mesh->triangleIndices[25] = 11;
+    mesh->triangleIndices[26] = 4;
+    mesh->triangleIndices[27] = 11;
+    mesh->triangleIndices[28] = 0;
+    mesh->triangleIndices[29] = 4;
+    mesh->triangleIndices[30] = 5;
+    mesh->triangleIndices[31] = 1;
+    mesh->triangleIndices[32] = 12;
+    mesh->triangleIndices[33] = 1;
+    mesh->triangleIndices[34] = 13;
+    mesh->triangleIndices[35] = 12;
+}
+
+static cube MakeCubeUnfolded(mesh *mesh, orientation orientation, vec3 pos, f32 side)
+{
+    cube result;
+    result.mesh = mesh;
+    result.orientation = orientation;
+    result.pos = pos;
+    result.side = side;
+    return result;
+}
+
+struct cube_simple
 {
     orientation orientation;
     i8 nVertices = 8;
@@ -29,7 +135,7 @@ struct cube
         0, 1, 4, 1, 5, 4};
 };
 
-static cube MakeCube(f32 side, orientation o, f32 texSide)
+/*static cube MakeCube(f32 side, orientation o, f32 texSide)
 {
     cube result;
     side /= 2.0f;
@@ -54,7 +160,7 @@ static cube MakeCube(f32 side, orientation o, f32 texSide)
     result.orientation.thetaY = o.thetaY;
     result.orientation.thetaZ = o.thetaZ;
     return result;
-}
+}*/
 
 struct cube_skinned
 {
@@ -75,11 +181,6 @@ struct cube_skinned
         10, 11, 4, 11, 0, 4,
         5, 1, 12, 1, 13, 12};
 };
-
-static inline vec2 ConvertSkinToTextureCoord(f32 u, f32 v)
-{
-    return {u / 3.0f, v / 4.0f};
-}
 
 static cube_skinned MakeCubeSkinned(f32 side, orientation o)
 {

@@ -420,27 +420,13 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 			break;
 		case WM_MOUSEWHEEL:
 			input.mouse.SetWheelDelta(input.mouse.WheelDelta() + GET_WHEEL_DELTA_WPARAM(message.wParam));
-			//while (input.mouse.wheelDelta >= WHEEL_DELTA)
-			//{
-			//	// wheel up action
-			//	input.mouse.wheelDelta -= WHEEL_DELTA;
-			//	input.mouse.wheelUp = true;
-			//}
-			//while (input.mouse.wheelDelta <= -WHEEL_DELTA)
-			//{
-			//	// wheel down action
-			//	input.mouse.wheelDelta += WHEEL_DELTA;
-			//	input.mouse.wheelDown = true;
-			//}
 		case WM_MOUSELEAVE:
 			POINTS p = MAKEPOINTS(message.lParam);
 			input.mouse.SetPos(p.x, p.y);
 			break;
 		case WM_KILLFOCUS:
-		{
 			input.keyboard.Clear();
-		}
-
+			break;
 		default:
 			TranslateMessage(&message);
 			DispatchMessage(&message);

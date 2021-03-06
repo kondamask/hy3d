@@ -63,8 +63,20 @@ struct engine_memory
     debug_free_file *DEBUGFreeFileMemory;
 };
 
+struct memory_arena
+{
+    u8 *base;
+    u64 size;
+    u64 used;
+};
+
 struct engine_state
 {
+    memory_arena memoryArena;
+
+    mesh *cubeMeshUnfolded;
+    cube cubePeepo;
+
     cube_skinned peepoCube;
     loaded_bitmap peepoTexture;
     axis3d peepoCubeAxis;

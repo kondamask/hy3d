@@ -7,6 +7,7 @@ static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *file
     debug_read_file_result file = ReadFile(filename);
     if (file.size != 0 && file.content)
     {
+        bmp->opacity = 1.0f;
         bitmap_header *header = (bitmap_header *)file.content;
         u8 *address = (u8 *)file.content + header->bitmapOffset;
         u32 *pixels = (u32 *)address;
@@ -40,6 +41,38 @@ static void LoadBitmap(loaded_bitmap *bmp, debug_read_file *ReadFile, char *file
     }
 }
 
+static void InitializeMemoryArena(memory_arena *arena, u8 *base, size_t size)
+{
+    arena->base = base;
+    arena->size = size;
+    arena->used = 0;
+}
+
+static void *ReserveMemory(memory_arena *arena, u64 size)
+{
+    ASSERT(arena->used + size <= arena->size)
+    void *result = arena->base + arena->used;
+    arena->used += size;
+    return result;
+}
+
+static mesh *ReserveMeshMemory(memory_arena *arena, i32 nVertices, i32 nIndices)
+{
+    u64 infoSize = sizeof(mesh) - sizeof(vertex *) - sizeof(i32 *);
+    u64 verticesSize = nVertices * sizeof(vertex);
+    u64 indicesSize = nIndices * sizeof(i32);
+    u64 totalSize = infoSize + verticesSize + indicesSize;
+
+    mesh *result = (mesh *)ReserveMemory(arena, totalSize);
+    result->vertices = (vertex *)(result + infoSize);
+    result->triangleIndices = (i32 *)(result->vertices + verticesSize);
+
+    result->nVertices = nVertices;
+    result->nIndices = nIndices;
+
+    return result;
+}
+
 static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memory)
 {
     e->input = {};
@@ -60,23 +93,20 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     state->logoVelX = 100.0f;
     state->logoVelY = 80.0f;
 
-    state->peepoCube.orientation = {0.0f, 0.0f, 0.0f};
-    state->peepoCubeZ = 2.0f;
-    state->peepoCubeDrawOutline = false;
-    LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
-    state->peepoTexture.opacity = 1.0f;
+    InitializeMemoryArena(&state->memoryArena,
+                          (u8 *)memory->permanentMemory + sizeof(engine_state),
+                          memory->permanentMemorySize - sizeof(engine_state));
 
-    state->crateCube.orientation = {0.3f, -0.4f, 0.0f};
-    state->crateCubeZ = 2.0f;
-    LoadBitmap(&state->crateTexture, memory->DEBUGReadFile, "crate.bmp");
-    state->crateTexture.opacity = 1.0f;
+    state->cubeMeshUnfolded = ReserveMeshMemory(&state->memoryArena, 14, 36);
+    LoadUnfoldedCubeMesh(state->cubeMeshUnfolded, 1.0f);
+    state->cubePeepo = MakeCubeUnfolded(state->cubeMeshUnfolded, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}, 1.0f);
+    LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
 
     LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
-    state->crateTexture.opacity = 1.0f;
     state->planeWave.time = 0.0f;
     state->planeWave.amplitude = 0.05f;
-    state->planeWave.waveFreq = 10.0f;
-    state->planeWave.scrollFreq = 5.0f;
+    state->planeWave.waveFreq = 11.0f;
+    state->planeWave.scrollFreq = 8.0f;
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -95,51 +125,51 @@ static void Update(hy3d_engine *e, engine_state *state)
     f32 speed = 2.5f * dt;
     if (e->input.keyboard.isPressed[UP])
     {
-        state->peepoCube.orientation.thetaX += speed;
+        state->cubePeepo.orientation.thetaX += speed;
     }
     if (e->input.keyboard.isPressed[DOWN])
     {
-        state->peepoCube.orientation.thetaX -= speed;
+        state->cubePeepo.orientation.thetaX -= speed;
     }
     if (e->input.keyboard.isPressed[LEFT])
     {
-        state->peepoCube.orientation.thetaY += speed;
+        state->cubePeepo.orientation.thetaY += speed;
     }
     if (e->input.keyboard.isPressed[RIGHT])
     {
-        state->peepoCube.orientation.thetaY -= speed;
+        state->cubePeepo.orientation.thetaY -= speed;
     }
     if (e->input.keyboard.isPressed[Q])
-        state->peepoCube.orientation.thetaZ += speed;
+        state->cubePeepo.orientation.thetaZ += speed;
     if (e->input.keyboard.isPressed[W])
-        state->peepoCube.orientation.thetaZ -= speed;
-
-    // Logo Control
-    if (state->logo.posX < 0 || (state->logo.posX + state->logo.width) > e->pixelBuffer.width)
-        state->logoVelX = -state->logoVelX;
-    if (state->logo.posY < 0 || (state->logo.posY + state->logo.height) > e->pixelBuffer.height)
-        state->logoVelY = -state->logoVelY;
-    state->logo.posX += state->logoVelX * dt;
-    state->logo.posY += state->logoVelY * dt;
-
-    state->logo.opacity += (f32)e->input.mouse.WheelDelta() * 0.0005f;
-    if (state->logo.opacity > 1.0f)
-        state->logo.opacity = 1.0f;
-    if (state->logo.opacity < 0.0f)
-        state->logo.opacity = 0.0f;
-
+        state->cubePeepo.orientation.thetaZ -= speed;
     if (e->input.keyboard.isPressed[R])
     {
-        state->peepoCube.orientation.thetaX = 0.0f;
-        state->peepoCube.orientation.thetaY = 0.0f;
-        state->peepoCube.orientation.thetaZ = 0.0f;
+        state->cubePeepo.orientation.thetaX = 0.0f;
+        state->cubePeepo.orientation.thetaY = 0.0f;
+        state->cubePeepo.orientation.thetaZ = 0.0f;
     }
     f32 offsetZ = 1.0f * dt;
     if (e->input.keyboard.isPressed[Z])
-        state->peepoCubeZ -= offsetZ;
+        state->cubePeepo.pos.z -= offsetZ;
     if (e->input.keyboard.isPressed[X])
-        state->peepoCubeZ += offsetZ;
-    state->peepoCubeDrawOutline = e->input.keyboard.isPressed[CTRL];
+        state->cubePeepo.pos.z += offsetZ;
+
+    // Logo Control
+    //if (state->logo.posX < 0 || (state->logo.posX + state->logo.width) > e->pixelBuffer.width)
+    //    state->logoVelX = -state->logoVelX;
+    //if (state->logo.posY < 0 || (state->logo.posY + state->logo.height) > e->pixelBuffer.height)
+    //    state->logoVelY = -state->logoVelY;
+    //state->logo.posX += state->logoVelX * dt;
+    //state->logo.posY += state->logoVelY * dt;
+
+    //state->logo.opacity += (f32)e->input.mouse.WheelDelta() * 0.0005f;
+    //if (state->logo.opacity > 1.0f)
+    //    state->logo.opacity = 1.0f;
+    //if (state->logo.opacity < 0.0f)
+    //    state->logo.opacity = 0.0f;
+
+    //state->peepoCubeDrawOutline = e->input.keyboard.isPressed[CTRL];
 }
 
 static void Render(hy3d_engine *e, engine_state *state)
@@ -147,53 +177,29 @@ static void Render(hy3d_engine *e, engine_state *state)
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
     DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
-    //state->crateCube = MakeCubeSkinned(1.0f, state->crateCube.orientation);
-    //mat3 rotation = RotateX(state->crateCube.orientation.thetaX) *
-    //                RotateY(state->crateCube.orientation.thetaY) *
-    //                RotateZ(state->crateCube.orientation.thetaZ);
-    //vec3 translation = {0.0f, 0.0f, state->crateCubeZ};
-    //DrawObjectTextured(state->crateCube.vertices, state->crateCube.nVertices,
-    //                   state->crateCube.indices, state->crateCube.nIndices,
-    //                   rotation, translation, &state->crateTexture,
-    //                   &e->pixelBuffer, &e->screenTransformer);
-
     mat3 rotation;
     vec3 translation;
 
-    state->plane = MakeSquarePlane(1.0f, state->plane.orientation);
-    state->peepoCube = MakeCubeSkinned(1.0f, state->peepoCube.orientation);
-    state->peepoCubeAxis = MakeAxis3D({-0.0f, -0.0f, -0.0f}, 1.0f, state->peepoCube.orientation);
+    //rotation = RotateX(state->plane.orientation.thetaX) *
+    //           RotateY(state->plane.orientation.thetaY) *
+    //           RotateZ(state->plane.orientation.thetaZ);
+    //translation = {0.0f, 1.5f, 2.0f};
 
-    rotation = RotateX(state->plane.orientation.thetaX) *
-               RotateY(state->plane.orientation.thetaY) *
-               RotateZ(state->plane.orientation.thetaZ);
-    translation = {0.0f, 1.5f, 2.0f};
-    state->planeWave.amplitude = 0.05f;
-    state->planeWave.waveFreq = 11.0f;
-    state->planeWave.scrollFreq = 8.0f;
-    DrawObjectTexturedWithVShader(state->plane.vertices, state->plane.nVertices,
-                                 state->plane.indices, state->plane.nIndices,
-                                 rotation, translation, &state->planeTexture,
-                                 VertexShaderWave, &state->planeWave,
-                                 &e->pixelBuffer, &e->screenTransformer);
+    //DrawObjectTexturedWithVShader(state->plane.vertices, state->plane.nVertices,
+    //                              state->plane.indices, state->plane.nIndices,
+    //                              rotation, translation, &state->planeTexture,
+    //                              VertexShaderWave, &state->planeWave,
+    //                              &e->pixelBuffer, &e->screenTransformer);
 
-    rotation = RotateX(state->peepoCube.orientation.thetaX) *
-               RotateY(state->peepoCube.orientation.thetaY) *
-               RotateZ(state->peepoCube.orientation.thetaZ);
-    translation = {0.0f, 0.0f, state->peepoCubeZ};
-    DrawObjectTextured(state->peepoCube.vertices, state->peepoCube.nVertices,
-                       state->peepoCube.indices, state->peepoCube.nIndices,
-                       rotation, translation, &state->peepoTexture,
+    rotation = RotateX(state->cubePeepo.orientation.thetaX) *
+               RotateY(state->cubePeepo.orientation.thetaY) *
+               RotateZ(state->cubePeepo.orientation.thetaZ);
+    translation = state->cubePeepo.pos;
+    DrawObjectTextured(*state->cubePeepo.mesh, rotation, translation, &state->peepoTexture,
                        &e->pixelBuffer, &e->screenTransformer);
     DrawAxis3D(state->peepoCubeAxis.vertices, state->peepoCubeAxis.nVertices,
                state->peepoCubeAxis.lines, state->peepoCubeAxis.nLinesVertices, state->peepoCubeAxis.colors,
                rotation, translation, &e->pixelBuffer, &e->screenTransformer);
-    if (state->peepoCubeDrawOutline)
-    {
-        DrawObjectOutline(state->peepoCube.vertices, state->peepoCube.nVertices,
-                          state->peepoCube.lines, state->peepoCube.nLineIndices, {150, 150, 150},
-                          rotation, translation, &e->pixelBuffer, &e->screenTransformer);
-    }
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

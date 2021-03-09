@@ -323,21 +323,37 @@ static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loade
         DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
+#define GetMeshCopy()                \
+    vertex *vertices;                \
+    triangle_index *triangleIndices; \
+    GetMeshCopy_(mesh, &vertices, &triangleIndices)
+static void GetMeshCopy_(mesh mesh, vertex **verticesOut, triangle_index **triangleIndicesOut)
+{
+    *verticesOut = (vertex *)calloc(mesh.nVertices, sizeof(vertex));
+    *triangleIndicesOut = (triangle_index *)calloc(mesh.nIndices, sizeof(triangle_index));
+
+    memcpy(*verticesOut, mesh.vertices, mesh.nVertices * sizeof(vertex));
+    memcpy(*triangleIndicesOut, mesh.triangleIndices, mesh.nIndices * sizeof(triangle_index));
+}
+
+#define FreeMeshCopy() FreeMeshCopy_(vertices, triangleIndices)
+static void FreeMeshCopy_(vertex *vertices, triangle_index *triangleIndices)
+{
+    free(vertices);
+    free(triangleIndices);
+}
+
 static void DrawObjectTextured(mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
                                pixel_buffer *pixelBuffer, screen_transformer *st)
 {
-    vertex *vertices = (vertex *) calloc(mesh.nVertices, sizeof(vertex));
-    triangle_index *triangleIndices = (triangle_index *) calloc(mesh.nIndices, sizeof(triangle_index));
-
-    memcpy(vertices, mesh.vertices, mesh.nVertices * sizeof(vertex));
-    memcpy(triangleIndices, mesh.triangleIndices, mesh.nIndices * sizeof(triangle_index));
+    GetMeshCopy();
 
     // Apply Transformations
     for (i32 i = 0; i < mesh.nVertices; i++)
         vertices[i].pos = vertices[i].pos * rotation + translation;
 
     // Find and Draw Visible Triangles
-    for (i32 i = 0; i < mesh.nIndices; i += 3)
+    for (i32 i = 0; i + 2 < mesh.nIndices; i += 3)
     {
         triangle t = {vertices[triangleIndices[i]],
                       vertices[triangleIndices[i + 1]],
@@ -353,8 +369,7 @@ static void DrawObjectTextured(mesh mesh, mat3 rotation, vec3 translation, loade
         }
     }
 
-    free(vertices);
-    free(triangleIndices);
+    FreeMeshCopy();
 }
 
 static inline void VertexShaderWave(vertex *v, void *properties)
@@ -363,23 +378,25 @@ static inline void VertexShaderWave(vertex *v, void *properties)
     v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
 }
 
-static void DrawObjectTexturedWithVShader(
-    vertex *vertices, i32 nVertices, i8 *indices, i32 nIndices,
-    mat3 rotation, vec3 translation, loaded_bitmap *bmp,
-    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties,
-    pixel_buffer *pixelBuffer, screen_transformer *st)
+static void DrawObjectTexturedWithVShader(mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
+                                          void (*VertexShader)(vertex *, void *), void *vertexShaderProperties,
+                                          pixel_buffer *pixelBuffer, screen_transformer *st)
 {
+    GetMeshCopy();
+
     // Apply Transformations
-    for (i32 i = 0; i < nVertices; i++)
+    for (i32 i = 0; i < mesh.nVertices; i++)
     {
         vertices[i].pos = vertices[i].pos * rotation + translation;
         VertexShader(&vertices[i], vertexShaderProperties);
     }
 
     // Find and Draw Visible Triangles
-    for (i32 i = 0; i < nIndices; i += 3)
+    for (i32 i = 0; i + 2 < mesh.nIndices; i += 3)
     {
-        triangle t = {vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]]};
+        triangle t = {vertices[triangleIndices[i]],
+                      vertices[triangleIndices[i + 1]],
+                      vertices[triangleIndices[i + 2]]};
         bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
         if (isVisible)
         {
@@ -390,6 +407,8 @@ static void DrawObjectTexturedWithVShader(
             DrawTriangleTextured(pixelBuffer, t, bmp);
         }
     }
+
+    FreeMeshCopy();
 }
 
 static void DrawObjectOutline(

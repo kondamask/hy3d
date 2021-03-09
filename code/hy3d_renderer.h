@@ -94,4 +94,12 @@ struct vertex_shader_wave
     f32 waveFreq;
     f32 scrollFreq;
     f32 time;
+
+    void Initialize(f32 amplitudeIn, f32 waveFreqIn, f32 scrollFreqIn)
+    {
+        amplitude = amplitudeIn;
+        waveFreq = waveFreqIn;
+        scrollFreq = scrollFreqIn;
+        time = 0.0f;
+    }
 };

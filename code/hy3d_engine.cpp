@@ -48,7 +48,9 @@ static void InitializeMemoryArena(memory_arena *arena, u8 *base, size_t size)
     arena->used = 0;
 }
 
-static void *ReserveMemory(memory_arena *arena, u64 size)
+#define ReserveStructMemory(arena, type) (type *)ReserveMemory(arena, sizeof(type))
+#define ReserveArrayMemory(arena, count, type) (type *)ReserveMemory(arena, (count) * sizeof(type))
+static void *ReserveMemory(memory_arena *arena, size_t size)
 {
     ASSERT(arena->used + size <= arena->size)
     void *result = arena->base + arena->used;
@@ -56,20 +58,13 @@ static void *ReserveMemory(memory_arena *arena, u64 size)
     return result;
 }
 
-static mesh *ReserveMeshMemory(memory_arena *arena, i32 nVertices, i32 nIndices)
+static mesh ReserveMeshMemory(memory_arena *arena, i32 nVertices, i32 nIndices)
 {
-    u64 infoSize = sizeof(mesh) - sizeof(vertex *) - sizeof(i32 *);
-    u64 verticesSize = nVertices * sizeof(vertex);
-    u64 indicesSize = nIndices * sizeof(i32);
-    u64 totalSize = infoSize + verticesSize + indicesSize;
-
-    mesh *result = (mesh *)ReserveMemory(arena, totalSize);
-    result->vertices = (vertex *)(result + infoSize);
-    result->triangleIndices = (i32 *)(result->vertices + verticesSize);
-
-    result->nVertices = nVertices;
-    result->nIndices = nIndices;
-
+    mesh result;
+    result.nVertices = nVertices;
+    result.nIndices = nIndices;
+    result.vertices = ReserveArrayMemory(arena, nVertices, vertex);
+    result.triangleIndices = ReserveArrayMemory(arena, nIndices, triangle_index);
     return result;
 }
 
@@ -88,25 +83,27 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
 
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
     state->background.opacity = 1.0f;
-    LoadBitmap(&state->logo, memory->DEBUGReadFile, "hy3d_gimp.bmp");
-    state->logo.opacity = 0.3f;
-    state->logoVelX = 100.0f;
-    state->logoVelY = 80.0f;
 
     InitializeMemoryArena(&state->memoryArena,
                           (u8 *)memory->permanentMemory + sizeof(engine_state),
                           memory->permanentMemorySize - sizeof(engine_state));
 
+    // Make cube
     state->cubeMeshUnfolded = ReserveMeshMemory(&state->memoryArena, 14, 36);
-    LoadUnfoldedCubeMesh(state->cubeMeshUnfolded, 1.0f);
-    state->cubePeepo = MakeCubeUnfolded(state->cubeMeshUnfolded, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}, 1.0f);
+    LoadUnfoldedCubeMesh(&state->cubeMeshUnfolded, 1.0f);
+    state->cubePeepo = MakeCubeUnfolded(&state->cubeMeshUnfolded, {}, {0.0f, 0.0f, 2.0f}, 1.0f);
     LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
 
+    // Make plane
+    i32 divisions = 20;
+    i32 nVertices = (divisions + 1) * (divisions + 1);
+    i32 nTriangleIndices = (divisions * divisions * 2) * 3;
+    f32 side = 0.8f;
+    state->planeMesh = ReserveMeshMemory(&state->memoryArena, nVertices, nTriangleIndices);
+    LoadSquarePlaneMesh(&state->planeMesh, side, divisions);
+    state->plane = MakeSquarePlane(&state->planeMesh, {}, {0.0f, 1.5f, 2.0f}, side, divisions);
     LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
-    state->planeWave.time = 0.0f;
-    state->planeWave.amplitude = 0.05f;
-    state->planeWave.waveFreq = 11.0f;
-    state->planeWave.scrollFreq = 8.0f;
+    state->planeWave.Initialize(0.05f, 11.0f, 8.0f);
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -154,52 +151,24 @@ static void Update(hy3d_engine *e, engine_state *state)
         state->cubePeepo.pos.z -= offsetZ;
     if (e->input.keyboard.isPressed[X])
         state->cubePeepo.pos.z += offsetZ;
-
-    // Logo Control
-    //if (state->logo.posX < 0 || (state->logo.posX + state->logo.width) > e->pixelBuffer.width)
-    //    state->logoVelX = -state->logoVelX;
-    //if (state->logo.posY < 0 || (state->logo.posY + state->logo.height) > e->pixelBuffer.height)
-    //    state->logoVelY = -state->logoVelY;
-    //state->logo.posX += state->logoVelX * dt;
-    //state->logo.posY += state->logoVelY * dt;
-
-    //state->logo.opacity += (f32)e->input.mouse.WheelDelta() * 0.0005f;
-    //if (state->logo.opacity > 1.0f)
-    //    state->logo.opacity = 1.0f;
-    //if (state->logo.opacity < 0.0f)
-    //    state->logo.opacity = 0.0f;
-
-    //state->peepoCubeDrawOutline = e->input.keyboard.isPressed[CTRL];
 }
 
 static void Render(hy3d_engine *e, engine_state *state)
 {
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
-    DrawBitmap(&state->logo, (i32)(state->logo.posX), (i32)(state->logo.posY), &e->pixelBuffer);
 
     mat3 rotation;
-    vec3 translation;
-
-    //rotation = RotateX(state->plane.orientation.thetaX) *
-    //           RotateY(state->plane.orientation.thetaY) *
-    //           RotateZ(state->plane.orientation.thetaZ);
-    //translation = {0.0f, 1.5f, 2.0f};
-
-    //DrawObjectTexturedWithVShader(state->plane.vertices, state->plane.nVertices,
-    //                              state->plane.indices, state->plane.nIndices,
-    //                              rotation, translation, &state->planeTexture,
-    //                              VertexShaderWave, &state->planeWave,
-    //                              &e->pixelBuffer, &e->screenTransformer);
 
     rotation = RotateX(state->cubePeepo.orientation.thetaX) *
                RotateY(state->cubePeepo.orientation.thetaY) *
                RotateZ(state->cubePeepo.orientation.thetaZ);
-    translation = state->cubePeepo.pos;
-    DrawObjectTextured(*state->cubePeepo.mesh, rotation, translation, &state->peepoTexture,
-                       &e->pixelBuffer, &e->screenTransformer);
-    DrawAxis3D(state->peepoCubeAxis.vertices, state->peepoCubeAxis.nVertices,
-               state->peepoCubeAxis.lines, state->peepoCubeAxis.nLinesVertices, state->peepoCubeAxis.colors,
-               rotation, translation, &e->pixelBuffer, &e->screenTransformer);
+    DrawObjectTexturedWithVShader(
+        *state->plane.mesh, rotation, state->plane.pos, &state->planeTexture,
+        VertexShaderWave, &state->planeWave, &e->pixelBuffer, &e->screenTransformer);
+
+    DrawObjectTextured(
+        *state->cubePeepo.mesh, rotation, state->cubePeepo.pos, &state->peepoTexture,
+        &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

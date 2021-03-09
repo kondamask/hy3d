@@ -66,35 +66,24 @@ struct engine_memory
 struct memory_arena
 {
     u8 *base;
-    u64 size;
-    u64 used;
+    size_t size;
+    size_t used;
 };
 
 struct engine_state
 {
     memory_arena memoryArena;
 
-    mesh *cubeMeshUnfolded;
+    mesh cubeMeshUnfolded;
     cube cubePeepo;
-
-    cube_skinned peepoCube;
     loaded_bitmap peepoTexture;
-    axis3d peepoCubeAxis;
-    f32 peepoCubeZ;
-    bool peepoCubeDrawOutline;
 
-    cube_skinned crateCube;
-    loaded_bitmap crateTexture;
-    f32 crateCubeZ;
-
-    square_plane10 plane;
+    mesh planeMesh;
+    square_plane plane;
     loaded_bitmap planeTexture;
     vertex_shader_wave planeWave;
 
     loaded_bitmap background;
-    loaded_bitmap logo;
-    f32 logoVelX;
-    f32 logoVelY;
 };
 
 enum KEYBOARD_BUTTON

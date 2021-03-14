@@ -1,6 +1,6 @@
 @echo off
 
-set COMPILER_FLAGS=-MTd -WL -Od -nologo -fp:fast -fp:except- -Gm- -EHsc -Zo -Oi -W4 -wd4100 -wd4458 -wd4505 -FC -Zi -GS-
+set COMPILER_FLAGS=-MTd -WL -Od -nologo -fp:fast -fp:except- -Gm- -EHsc -Zo -Oi -W4 -wd4100 -wd4458 -wd4505 -Zi -GS-
 set LINKER_FLAGS=-subsystem:windows -incremental:no -opt:ref user32.lib gdi32.lib
 
 if not exist .\\build mkdir .\\build

@@ -65,6 +65,24 @@ static inline u32 GetTextureColorU32(loaded_bitmap *bmp, vec2 coord)
     return bmp->GetColorU32((i32)x, (i32)y);
 }
 
+static inline color GetTextureColorRGB(loaded_bitmap *bmp, vec2 coord)
+{
+    f32 x = coord.x * bmp->width;
+    f32 y = coord.y * bmp->height;
+    f32 xMax = (f32)bmp->width - 1.0f;
+    f32 yMax = (f32)bmp->height - 1.0f;
+    if (x < 0.0f)
+        x = 0.0f;
+    else if (xMax < x)
+        x = bmp->width - 1.0f;
+    if (y < 0.0f)
+        y = 0.0f;
+    else if (yMax < y)
+        y = bmp->height - 1.0f;
+
+    return bmp->GetColorRGB((i32)x, (i32)y);
+}
+
 static inline u32 GetTextureWrapColorU32(loaded_bitmap *bmp, vec2 coord)
 {
     f32 x = coord.x * (f32)bmp->width;
@@ -222,11 +240,19 @@ static bool UpdateZBuffer(pixel_buffer *pixelBuffer, i32 x, i32 y, f32 value)
     return false;
 }
 
+static inline color GetShadedColor(color c, vec3 shade)
+{
+    u8 r = (u8)((f32)c.r * shade.x);
+    u8 g = (u8)((f32)c.g * shade.y);
+    u8 b = (u8)((f32)c.b * shade.z);
+    return {r, g, b};
+}
+
 static void DrawFlatTriangleTextured(
     pixel_buffer *pixelBuffer, loaded_bitmap *bmp,
     vertex leftStart, vertex rightStart,
     vertex dvLeft, vertex dvRight,
-    f32 yTopF32, f32 yBottomF32)
+    f32 yTopF32, f32 yBottomF32, vec3 shade)
 {
     i16 xLeft;
     i16 xRight;
@@ -250,7 +276,7 @@ static void DrawFlatTriangleTextured(
             if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
             {
                 vertex attr = texCoord * objectSpazeZ;
-                u32 c = GetTextureColorU32(bmp, attr.uv);
+                color c = GetShadedColor(GetTextureColorRGB(bmp, attr.uv), shade);
                 PutPixel(pixelBuffer, x, y, c);
             }
         }
@@ -259,21 +285,21 @@ static void DrawFlatTriangleTextured(
     }
 }
 
-static void DrawTriangleTextured(pixel_buffer *pixelBuffer, triangle t, loaded_bitmap *bmp)
+static void DrawTriangleTextured(pixel_buffer *pixelBuffer, triangle t, loaded_bitmap *bmp, vec3 shade)
 {
     processed_triangle_result p = ProcessTriangle(&t);
 
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
-        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y, shade);
     else
-        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y, shade);
 
     //Bottom Half | Flat Top
     if (p.isLeftSideMajor)
-        DrawFlatTriangleTextured(pixelBuffer, bmp, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangleTextured(pixelBuffer, bmp, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y, shade);
     else
-        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangleTextured(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y, shade);
 }
 
 static void DrawFlatTriangleTextureWrap(
@@ -330,10 +356,10 @@ static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loade
 static void GetMeshCopy_(mesh mesh, vertex **verticesOut, triangle_index **triangleIndicesOut)
 {
     *verticesOut = (vertex *)calloc(mesh.nVertices, sizeof(vertex));
-    *triangleIndicesOut = (triangle_index *)calloc(mesh.nIndices, sizeof(triangle_index));
+    *triangleIndicesOut = (triangle_index *)calloc(mesh.nTriangleIndices, sizeof(triangle_index));
 
     memcpy(*verticesOut, mesh.vertices, mesh.nVertices * sizeof(vertex));
-    memcpy(*triangleIndicesOut, mesh.triangleIndices, mesh.nIndices * sizeof(triangle_index));
+    memcpy(*triangleIndicesOut, mesh.triangleIndices, mesh.nTriangleIndices * sizeof(triangle_index));
 }
 
 #define FreeMeshCopy() FreeMeshCopy_(vertices, triangleIndices)
@@ -343,68 +369,61 @@ static void FreeMeshCopy_(vertex *vertices, triangle_index *triangleIndices)
     free(triangleIndices);
 }
 
-static void DrawObjectTextured(mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
-                               pixel_buffer *pixelBuffer, screen_transformer *st)
-{
-    GetMeshCopy();
-
-    // Apply Transformations
-    for (i32 i = 0; i < mesh.nVertices; i++)
-        vertices[i].pos = vertices[i].pos * rotation + translation;
-
-    // Find and Draw Visible Triangles
-    for (i32 i = 0; i + 2 < mesh.nIndices; i += 3)
-    {
-        triangle t = {vertices[triangleIndices[i]],
-                      vertices[triangleIndices[i + 1]],
-                      vertices[triangleIndices[i + 2]]};
-        bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
-        if (isVisible)
-        {
-            TransformVertexToScreen(st, &t.v0);
-            TransformVertexToScreen(st, &t.v1);
-            TransformVertexToScreen(st, &t.v2);
-
-            DrawTriangleTextured(pixelBuffer, t, bmp);
-        }
-    }
-
-    FreeMeshCopy();
-}
-
 static inline void VertexShaderWave(vertex *v, void *properties)
 {
     vertex_shader_wave *wave = (vertex_shader_wave *)properties;
     v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
 }
 
-static void DrawObjectTexturedWithVShader(mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
-                                          void (*VertexShader)(vertex *, void *), void *vertexShaderProperties,
-                                          pixel_buffer *pixelBuffer, screen_transformer *st)
+static inline vec3 FlatShading(vec3 normal, vec3 globalLight, vec3 globalDir, vec3 ambientLight, vec3 materialReflection)
+{
+    normal.normalize();
+    globalLight = globalLight * maxF32(0.0f, -normal * globalDir);
+    vec3 result = Saturated(HadamardProduct(materialReflection, globalLight + ambientLight));
+    return result;
+}
+
+static void DrawObjectTextured(
+    mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
+    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties, vec3 lightDir,
+    pixel_buffer *pixelBuffer, screen_transformer *st)
 {
     GetMeshCopy();
 
     // Apply Transformations
-    for (i32 i = 0; i < mesh.nVertices; i++)
+    if (VertexShader)
     {
-        vertices[i].pos = vertices[i].pos * rotation + translation;
-        VertexShader(&vertices[i], vertexShaderProperties);
+        for (i32 i = 0; i < mesh.nVertices; i++)
+        {
+            vertices[i].pos = vertices[i].pos * rotation + translation;
+            VertexShader(&vertices[i], vertexShaderProperties);
+        }
+    }
+    else
+    {
+        for (i32 i = 0; i < mesh.nVertices; i++)
+        {
+            vertices[i].pos = vertices[i].pos * rotation + translation;
+        }
     }
 
     // Find and Draw Visible Triangles
-    for (i32 i = 0; i + 2 < mesh.nIndices; i += 3)
+    for (i32 i = 0; i + 2 < mesh.nTriangleIndices; i += 3)
     {
         triangle t = {vertices[triangleIndices[i]],
                       vertices[triangleIndices[i + 1]],
                       vertices[triangleIndices[i + 2]]};
-        bool isVisible = (CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos) * t.v0.pos) <= 0;
+        vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
+        bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
+            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.0f, 0.3f}, {1.0f, 1.0f, 1.0f});
+
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
 
-            DrawTriangleTextured(pixelBuffer, t, bmp);
+            DrawTriangleTextured(pixelBuffer, t, bmp, shadeFactor);
         }
     }
 

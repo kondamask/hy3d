@@ -2,6 +2,20 @@
 #include "hy3d_types.h"
 #include "math.h"
 
+inline f32 minF32(f32 a, f32 b)
+{
+    if (a <= b)
+        return a;
+    return b;
+}
+
+inline f32 maxF32(f32 a, f32 b)
+{
+    if (a >= b)
+        return a;
+    return b;
+}
+
 struct vec3
 {
     f32 x, y, z;
@@ -105,6 +119,21 @@ inline vec3 CrossProduct(vec3 a, vec3 b)
     return {a.y * b.z - a.z * b.y,
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x};
+}
+
+inline vec3 HadamardProduct(vec3 a, vec3 b)
+{
+    return {a.x * b.x,
+            a.y * b.y,
+            a.z * b.z};
+}
+
+inline vec3 Saturated(vec3 a)
+{
+    a.x = minF32(1.0f, maxF32(0.0f, a.x));
+    a.y = minF32(1.0f, maxF32(0.0f, a.y));
+    a.z = minF32(1.0f, maxF32(0.0f, a.z));
+    return a;
 }
 
 // NOTE:  comparison

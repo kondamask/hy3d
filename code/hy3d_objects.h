@@ -1,7 +1,7 @@
 #pragma once
 #include "hy3d_math.h"
 
-typedef i32 triangle_index;
+typedef int32_t triangle_index;
 
 static inline vec2 ConvertSkinToTextureCoord(f32 u, f32 v)
 {
@@ -18,7 +18,7 @@ struct orientation
 struct mesh
 {
     i32 nVertices;
-    i32 nIndices;
+    i32 nTriangleIndices;
     vertex *vertices;
     triangle_index *triangleIndices;
 };
@@ -40,10 +40,27 @@ struct square_plane
     i32 divisions;
 };
 
+struct axis3d
+{
+    mesh *mesh;
+    orientation orientation;
+    vec3 pos;
+    f32 length;
+    i8 nLinesVertices = 6;
+    i8 lines[6] = {
+        0, 1,
+        0, 2,
+        0, 3};
+    color colors[3] = {
+        {255, 0, 0},
+        {0, 255, 0},
+        {0, 0, 255}};
+};
+
 static void LoadUnfoldedCubeMesh(mesh *mesh, f32 side)
 {
     mesh->nVertices = 14;
-    mesh->nIndices = 36;
+    mesh->nTriangleIndices = 36;
     side /= 2.0f;
 
     mesh->vertices[0].pos = {-side, -side, -side}; // 0
@@ -156,7 +173,7 @@ static void LoadSquarePlaneMesh(mesh *mesh, f32 side, i32 divisions)
     i32 ti = 0;
     i32 vi = 0;
     i32 row = 0;
-    while ((ti + 5 < mesh->nIndices) && (vi + divisions + 2 < mesh->nVertices))
+    while ((ti + 5 < mesh->nTriangleIndices) && (vi + divisions + 2 < mesh->nVertices))
     {
         mesh->triangleIndices[ti] = vi;
         mesh->triangleIndices[ti + 1] = vi + divisions + 1;
@@ -187,34 +204,10 @@ static square_plane MakeSquarePlane(mesh *mesh, orientation orientation, vec3 po
     return result;
 }
 
-struct axis3d
+static void LoadAxis3DMesh(mesh *mesh, f32 length)
 {
-    i8 nVertices = 4;
-    vertex vertices[4];
-    i8 nLinesVertices = 6;
-    i8 lines[6] = {
-        0, 1,
-        0, 2,
-        0, 3};
-    color colors[3] = {
-        {255, 0, 0},
-        {0, 255, 0},
-        {0, 0, 255}};
-    orientation orientation;
-};
-
-static axis3d MakeAxis3D(vec3 center, f32 length, orientation o)
-{
-    axis3d result;
-    result.vertices[0].pos = center;
-    result.vertices[1].pos = {length, 0.0f, 0.0f};
-    result.vertices[1].pos += center;
-    result.vertices[2].pos = {0.0f, length, 0.0f};
-    result.vertices[2].pos += center;
-    result.vertices[3].pos = {0.0f, 0.0f, length};
-    result.vertices[3].pos += center;
-    result.orientation.thetaX = o.thetaX;
-    result.orientation.thetaY = o.thetaY;
-    result.orientation.thetaZ = o.thetaZ;
-    return result;
+    mesh->vertices[0].pos = {};
+    mesh->vertices[1].pos = {length, 0.0f, 0.0f};
+    mesh->vertices[2].pos = {0.0f, length, 0.0f};
+    mesh->vertices[3].pos = {0.0f, 0.0f, length};
 }

@@ -58,13 +58,13 @@ static void *ReserveMemory(memory_arena *arena, size_t size)
     return result;
 }
 
-static mesh ReserveMeshMemory(memory_arena *arena, i32 nVertices, i32 nIndices)
+static mesh ReserveMeshMemory(memory_arena *arena, i32 nVertices, i32 triangleIndices)
 {
     mesh result;
     result.nVertices = nVertices;
-    result.nIndices = nIndices;
+    result.nTriangleIndices = triangleIndices;
     result.vertices = ReserveArrayMemory(arena, nVertices, vertex);
-    result.triangleIndices = ReserveArrayMemory(arena, nIndices, triangle_index);
+    result.triangleIndices = ReserveArrayMemory(arena, triangleIndices, triangle_index);
     return result;
 }
 
@@ -95,15 +95,17 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
 
     // Make plane
-    i32 divisions = 20;
+    i32 divisions = 30;
     i32 nVertices = (divisions + 1) * (divisions + 1);
     i32 nTriangleIndices = (divisions * divisions * 2) * 3;
     f32 side = 0.8f;
     state->planeMesh = ReserveMeshMemory(&state->memoryArena, nVertices, nTriangleIndices);
     LoadSquarePlaneMesh(&state->planeMesh, side, divisions);
-    state->plane = MakeSquarePlane(&state->planeMesh, {}, {0.0f, 1.5f, 2.0f}, side, divisions);
+    state->plane = MakeSquarePlane(&state->planeMesh, {}, {0.0f, 0.0f, 2.0f}, side, divisions);
     LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
     state->planeWave.Initialize(0.05f, 11.0f, 8.0f);
+
+    state->lightDir = {0.5, 0.0, 1.0f};
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -148,9 +150,25 @@ static void Update(hy3d_engine *e, engine_state *state)
     }
     f32 offsetZ = 1.0f * dt;
     if (e->input.keyboard.isPressed[Z])
+    {
         state->cubePeepo.pos.z -= offsetZ;
+        state->plane.pos.z -= offsetZ;
+    }
     if (e->input.keyboard.isPressed[X])
+    {
         state->cubePeepo.pos.z += offsetZ;
+        state->plane.pos.z += offsetZ;
+    }
+
+
+    if (e->input.keyboard.isPressed[C])
+    {
+        state->lightDir.x -= speed;
+    }
+    if (e->input.keyboard.isPressed[V])
+    {
+        state->lightDir.x += speed;
+    }
 }
 
 static void Render(hy3d_engine *e, engine_state *state)
@@ -162,13 +180,12 @@ static void Render(hy3d_engine *e, engine_state *state)
     rotation = RotateX(state->cubePeepo.orientation.thetaX) *
                RotateY(state->cubePeepo.orientation.thetaY) *
                RotateZ(state->cubePeepo.orientation.thetaZ);
-    DrawObjectTexturedWithVShader(
-        *state->plane.mesh, rotation, state->plane.pos, &state->planeTexture,
-        VertexShaderWave, &state->planeWave, &e->pixelBuffer, &e->screenTransformer);
-
     DrawObjectTextured(
-        *state->cubePeepo.mesh, rotation, state->cubePeepo.pos, &state->peepoTexture,
-        &e->pixelBuffer, &e->screenTransformer);
+        *state->plane.mesh, rotation, state->plane.pos, &state->planeTexture,
+        VertexShaderWave, &state->planeWave, state->lightDir, &e->pixelBuffer, &e->screenTransformer);
+    //DrawObjectTextured(
+    //    *state->cubePeepo.mesh, rotation, state->cubePeepo.pos, &state->peepoTexture,
+    //    0, 0, state->lightDir, &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

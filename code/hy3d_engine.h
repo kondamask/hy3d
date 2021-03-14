@@ -70,22 +70,6 @@ struct memory_arena
     size_t used;
 };
 
-struct engine_state
-{
-    memory_arena memoryArena;
-
-    mesh cubeMeshUnfolded;
-    cube cubePeepo;
-    loaded_bitmap peepoTexture;
-
-    mesh planeMesh;
-    square_plane plane;
-    loaded_bitmap planeTexture;
-    vertex_shader_wave planeWave;
-
-    loaded_bitmap background;
-};
-
 enum KEYBOARD_BUTTON
 {
     UP,
@@ -166,6 +150,26 @@ struct engine_input
 {
     mouse mouse;
     keyboard keyboard;
+};
+
+struct engine_state
+{
+    memory_arena memoryArena;
+    
+    mesh cubeMeshUnfolded;
+    mesh planeMesh;
+
+    cube cubePeepo;
+    loaded_bitmap peepoTexture;
+    axis3d cubeAxis;
+
+    square_plane plane;
+    loaded_bitmap planeTexture;
+    vertex_shader_wave planeWave;
+
+    loaded_bitmap background;
+
+    vec3 lightDir;
 };
 
 struct hy3d_engine

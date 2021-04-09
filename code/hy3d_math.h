@@ -18,7 +18,14 @@ inline f32 maxF32(f32 a, f32 b)
 
 struct vec3
 {
-    f32 x, y, z;
+    union
+    {
+        struct
+        {
+            f32 x, y, z;
+        };
+        f32 pos[3];
+    };
 
     inline vec3 operator=(vec3 b)
     {
@@ -158,7 +165,14 @@ inline vec3 lerp(vec3 P, vec3 A, vec3 B, f32 alpha)
 
 struct vec2
 {
-    f32 x, y;
+    union
+    {
+        struct
+        {
+            f32 x, y;
+        };
+        f32 pos[2];
+    };
 
     inline vec2 operator=(vec2 b)
     {

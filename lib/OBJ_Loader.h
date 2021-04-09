@@ -701,7 +701,7 @@ namespace objl
 					}
 				}
 			}
-
+			
 			if (LoadedMeshes.empty() && LoadedVertices.empty() && LoadedIndices.empty())
 			{
 				return false;

@@ -2,6 +2,7 @@
 #include "hy3d_types.h"
 #include "hy3d_renderer.h"
 #include "hy3d_objects.h"
+
 #include <chrono>
 
 #define KILOBYTES(val) (val * 1024LL)
@@ -162,6 +163,9 @@ struct engine_state
     cube cubePeepo;
     loaded_bitmap peepoTexture;
     axis3d cubeAxis;
+
+    object bunny;
+    orientation orientation;
 
     square_plane plane;
     loaded_bitmap planeTexture;

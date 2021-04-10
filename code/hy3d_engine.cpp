@@ -273,18 +273,24 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     e->screenTransformer.xFactor = e->pixelBuffer.width / e->space.width;
     e->screenTransformer.yFactor = e->pixelBuffer.width / e->space.height;
 
-    LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
-    state->background.opacity = 1.0f;
-    state->orientation = {};
-
     InitializeMemoryArena(&state->memoryArena,
                           (u8 *)memory->permanentMemory + sizeof(engine_state),
                           memory->permanentMemorySize - sizeof(engine_state));
 
-    LoadOBJ("gourad.obj", &state->memoryArena, &state->bunny);
-    state->bunny.pos = {0.0f, 0.0f, 20.0f};
+    state->scene = 1;
 
-    state->lightDir = {0.5, 0.0, 1.0f};
+    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny);
+    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey);
+    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad);
+    state->bunny.pos = {0.0f, 0.0f, 1.0f};
+    state->monkey.pos = {0.0f, 0.0f, 5.0f};
+    state->gourad.pos = {0.0f, 0.0f, 5.0f};
+
+    LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
+    state->background.opacity = 1.0f;
+    state->orientation = {};
+
+    state->lightDir = {0.0, 0.0, 1.0f};
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -297,7 +303,15 @@ static void Update(hy3d_engine *e, engine_state *state)
     f32 dt = frameTime.count();
     e->frameStart = frameEnd;
 
-    state->planeWave.time += dt;
+    if (e->input.keyboard.isPressed[ONE])
+        state->scene = 1;
+    
+    if (e->input.keyboard.isPressed[TWO])
+        state->scene = 2;
+    
+    if (e->input.keyboard.isPressed[THREE])
+        state->scene = 3;
+    
 
     // Cube Control
     f32 speed = 2.5f * dt;
@@ -330,14 +344,10 @@ static void Update(hy3d_engine *e, engine_state *state)
     f32 offsetZ = 1.0f * dt;
     if (e->input.keyboard.isPressed[Z])
     {
-        state->cubePeepo.pos.z -= offsetZ;
-        state->plane.pos.z -= offsetZ;
         state->bunny.pos.z -= offsetZ;
     }
     if (e->input.keyboard.isPressed[X])
     {
-        state->cubePeepo.pos.z += offsetZ;
-        state->plane.pos.z += offsetZ;
         state->bunny.pos.z += offsetZ;
     }
 
@@ -359,7 +369,15 @@ static void Render(hy3d_engine *e, engine_state *state)
                     RotateY(state->orientation.thetaY) *
                     RotateZ(state->orientation.thetaZ);
 
-    DrawOBJ(&state->bunny, rotation, state->bunny.pos, {255, 255, 255},
+    object *current;
+    if (state->scene == 1)
+        current = &state->bunny;
+    else if (state->scene == 2)
+        current = &state->monkey;
+    else if (state->scene == 3)
+        current = &state->gourad;
+
+    DrawOBJ(current, rotation, current->pos, {255, 255, 255},
             state->lightDir, &e->pixelBuffer, &e->screenTransformer);
 }
 

@@ -93,6 +93,16 @@ enum KEYBOARD_BUTTON
     CTRL,
     ALT,
     F4,
+    ZERO,
+    ONE,
+    TWO,
+    THREE,
+    FOUR,
+    FIVE,
+    SIX,
+    SEVEN,
+    EIGHT,
+    NINE,
     COUNT,
     INVALID
 };
@@ -156,20 +166,13 @@ struct engine_input
 struct engine_state
 {
     memory_arena memoryArena;
-    
-    mesh cubeMeshUnfolded;
-    mesh planeMesh;
 
-    cube cubePeepo;
-    loaded_bitmap peepoTexture;
-    axis3d cubeAxis;
+    i8 scene;
 
     object bunny;
+    object monkey;
+    object gourad;
     orientation orientation;
-
-    square_plane plane;
-    loaded_bitmap planeTexture;
-    vertex_shader_wave planeWave;
 
     loaded_bitmap background;
 

@@ -325,6 +325,36 @@ static KEYBOARD_BUTTON Win32TranslateKeyInput(VK_CODE code)
 	case VK_F4:
 		return F4;
 		break;
+	case 0x30:
+		return ZERO;
+		break;
+	case 0x31:
+		return ONE;
+		break;
+	case 0x32:
+		return TWO;
+		break;
+	case 0x33:
+		return THREE;
+		break;
+	case 0x34:
+		return FOUR;
+		break;
+	case 0x35:
+		return FIVE;
+		break;
+	case 0x36:
+		return SIX;
+		break;
+	case 0x37:
+		return SEVEN;
+		break;
+	case 0x38:
+		return EIGHT;
+		break;
+	case 0x39:
+		return NINE;
+		break;
 
 	default:
 		return INVALID;

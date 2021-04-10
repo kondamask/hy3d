@@ -167,14 +167,13 @@ struct engine_state
 {
     memory_arena memoryArena;
 
-    i8 scene;
+    loaded_bitmap background;
 
     object bunny;
     object monkey;
     object gourad;
+    object *curObject;
     orientation orientation;
-
-    loaded_bitmap background;
 
     vec3 lightDir;
 };

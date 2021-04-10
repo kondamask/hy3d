@@ -221,6 +221,7 @@ static void DrawFlatTriangle(
     vertex leftToRightStep;
     vertex inTriangleCoord;
     f32 objectSpazeZ;
+    c = GetShadedColor(c, shade);
 
     for (i16 y = yTop; y > yBottom; y--)
     {
@@ -234,7 +235,7 @@ static void DrawFlatTriangle(
             objectSpazeZ = 1.0f / inTriangleCoord.pos.z;
             if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
             {
-                c = GetShadedColor(c, shade);
+
                 PutPixel(pixelBuffer, x, y, c);
             }
         }
@@ -386,17 +387,17 @@ static inline void VertexShaderWave(vertex *v, void *properties)
     v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
 }
 
-static vec3 FlatShading(vec3 normal, vec3 diffuse, vec3 globalDir, vec3 ambient, vec3 material)
+static vec3 FlatShading(vec3 normal, vec3 diffuse, vec3 dir, vec3 ambient, vec3 material)
 {
     normal.normalize();
-    diffuse = diffuse * maxF32(0.0f, -normal * globalDir);
+    diffuse = diffuse * maxF32(0.0f, -normal * dir);
     vec3 result = Saturated(HadamardProduct(material, diffuse + ambient));
     return result;
 }
 
-static vec3 GouraudShading(vec3 normal, mat3 rotation, vec3 diffuse, vec3 globalDir, vec3 ambient, vec3 material)
+static vec3 GouraudShading(vec3 normal, mat3 rotation, vec3 diffuse, vec3 dir, vec3 ambient, vec3 material)
 {
-    diffuse = diffuse * maxF32(0.0f, -(normal * rotation) * globalDir);
+    diffuse = diffuse * maxF32(0.0f, -(normal * rotation) * dir);
     vec3 result = Saturated(HadamardProduct(material, diffuse + ambient));
     return result;
 }
@@ -448,53 +449,6 @@ static void DrawObjectTextured(
     FreeMeshCopy();
 }
 
-static void DrawObjectSolid(
-    mesh mesh, mat3 rotation, vec3 translation, color c,
-    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties, vec3 lightDir,
-    pixel_buffer *pixelBuffer, screen_transformer *st)
-{
-    GetMeshCopy();
-
-    // Apply Transformations
-    if (VertexShader)
-    {
-        for (i32 i = 0; i < mesh.nVertices; i++)
-        {
-            vertices[i].pos = vertices[i].pos * rotation + translation;
-            VertexShader(&vertices[i], vertexShaderProperties);
-        }
-    }
-    else
-    {
-        for (i32 i = 0; i < mesh.nVertices; i++)
-        {
-            vertices[i].pos = vertices[i].pos * rotation + translation;
-        }
-    }
-
-    // Find and Draw Visible Triangles
-    for (i32 i = 0; i + 2 < mesh.nIndices; i += 3)
-    {
-        triangle t = {vertices[indices[i]],
-                      vertices[indices[i + 1]],
-                      vertices[indices[i + 2]]};
-        vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
-        bool isVisible = (normal * t.v0.pos) <= 0;
-        if (isVisible)
-        {
-            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.0f, 0.3f}, {1.0f, 1.0f, 1.0f});
-
-            TransformVertexToScreen(st, &t.v0);
-            TransformVertexToScreen(st, &t.v1);
-            TransformVertexToScreen(st, &t.v2);
-
-            DrawTriangleSolid(pixelBuffer, t, c, shadeFactor);
-        }
-    }
-
-    FreeMeshCopy();
-}
-
 static void DrawOBJ(
     object *o, mat3 rotation, vec3 translation, color c,
     vec3 lightDir, pixel_buffer *pixelBuffer, screen_transformer *st)
@@ -508,7 +462,7 @@ static void DrawOBJ(
     }
 
     // Find and Draw Visible Triangles
-    for (i32 i = 0; i < o->nVertices; i += 3)
+    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
     {
         triangle t = {vertices[i],
                       vertices[i + 1],
@@ -517,7 +471,8 @@ static void DrawOBJ(
         bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
-            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.1f, 0.2f}, {1.0f, 1.0f, 1.0f});
+            vec3 shadeFactor = FlatShading(normal, {0.78f, 0.88f, 1.0f}, lightDir, {0.2f, 0.2f, 0.3f}, {1.0f, 1.0f, 1.0f});
+            //vec3 shadeFactor = GouraudShading(normal, rotation, {0.78f, 0.88f, 1.0f}, lightDir, {0.2f, 0.2f, 0.3f}, {1.0f, 1.0f, 1.0f});
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);

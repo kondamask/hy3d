@@ -218,15 +218,25 @@ static void DrawFlatTriangle(
     i16 yBottom = RoundF32toI16(yBottomF32);
     vertex left = Prestep(yTop, yTopF32, -dvLeft) + leftStart;
     vertex right = Prestep(yTop, yTopF32, -dvRight) + rightStart;
+    vertex leftToRightStep;
+    vertex inTriangleCoord;
+    f32 objectSpazeZ;
 
     for (i16 y = yTop; y > yBottom; y--)
     {
         xLeft = RoundF32toI16(left.pos.x);
         xRight = RoundF32toI16(right.pos.x);
-        for (i16 x = xLeft; x < xRight; x++)
+        leftToRightStep = VertexSlopeX(left, right);
+        inTriangleCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+
+        for (i16 x = xLeft; x < xRight; x++, inTriangleCoord -= leftToRightStep)
         {
-            c = GetShadedColor(c, shade);
-            PutPixel(pixelBuffer, x, y, c);
+            objectSpazeZ = 1.0f / inTriangleCoord.pos.z;
+            if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
+            {
+                c = GetShadedColor(c, shade);
+                PutPixel(pixelBuffer, x, y, c);
+            }
         }
         left -= dvLeft;
         right -= dvRight;
@@ -259,24 +269,24 @@ static void DrawFlatTriangleTextured(
     i16 xRight;
     i16 yTop = RoundF32toI16(yTopF32);
     i16 yBottom = RoundF32toI16(yBottomF32);
-    vertex texCoord;
     vertex left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
     vertex right = rightStart + Prestep(yTop, yTopF32, -dvRight);
     vertex leftToRightStep;
+    vertex inTriangleCoord;
     f32 objectSpazeZ;
     for (i16 y = yTop; y > yBottom; y--)
     {
         xLeft = RoundF32toI16(left.pos.x);
         xRight = RoundF32toI16(right.pos.x);
         leftToRightStep = VertexSlopeX(left, right);
-        texCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+        inTriangleCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
 
-        for (i16 x = xLeft; x < xRight; x++, texCoord -= leftToRightStep)
+        for (i16 x = xLeft; x < xRight; x++, inTriangleCoord -= leftToRightStep)
         {
-            objectSpazeZ = 1.0f / texCoord.pos.z;
+            objectSpazeZ = 1.0f / inTriangleCoord.pos.z;
             if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
             {
-                vertex attr = texCoord * objectSpazeZ;
+                vertex attr = inTriangleCoord * objectSpazeZ;
                 color c = GetShadedColor(GetTextureColorRGB(bmp, attr.texCoord), shade);
                 PutPixel(pixelBuffer, x, y, c);
             }
@@ -350,8 +360,8 @@ static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loade
         DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
-#define GetMeshCopy()                \
-    vertex *vertices;                \
+#define GetMeshCopy()        \
+    vertex *vertices;        \
     triangle_index *indices; \
     GetMeshCopy_(mesh, &vertices, &indices)
 static void GetMeshCopy_(mesh mesh, vertex **verticesOut, triangle_index **triangleIndicesOut)
@@ -425,7 +435,7 @@ static void DrawObjectTextured(
         bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
-            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.0f, 0.3f}, {1.0f, 1.0f, 1.0f});
+            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.1, 0.1f, 0.2f}, {1.0f, 1.0f, 1.0f});
 
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
@@ -486,18 +496,19 @@ static void DrawObjectSolid(
 }
 
 static void DrawOBJ(
-    mesh mesh, mat3 rotation, vec3 translation, color c,
+    object *o, mat3 rotation, vec3 translation, color c,
     vec3 lightDir, pixel_buffer *pixelBuffer, screen_transformer *st)
 {
-    GetMeshCopy();
+    vertex *vertices = (vertex *)calloc(o->nVertices, sizeof(vertex));
+    memcpy(vertices, o->vertices, o->nVertices * sizeof(vertex));
 
-    for (i32 i = 0; i < mesh.nVertices; i++)
+    for (i32 i = 0; i < o->nVertices; i++)
     {
         vertices[i].pos = vertices[i].pos * rotation + translation;
     }
 
     // Find and Draw Visible Triangles
-    for (i32 i = 0; i < mesh.nVertices; i += 3)
+    for (i32 i = 0; i < o->nVertices; i += 3)
     {
         triangle t = {vertices[i],
                       vertices[i + 1],
@@ -506,8 +517,7 @@ static void DrawOBJ(
         bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
-            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.0f, 0.3f}, {1.0f, 1.0f, 1.0f});
-
+            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.2, 0.1f, 0.2f}, {1.0f, 1.0f, 1.0f});
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
@@ -516,7 +526,7 @@ static void DrawOBJ(
         }
     }
 
-    FreeMeshCopy();
+    free(vertices);
 }
 
 static void DrawObjectOutline(

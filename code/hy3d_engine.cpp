@@ -76,6 +76,190 @@ static mesh ReserveOBJMeshMemory(memory_arena *arena, i32 nVertices)
     return result;
 }
 
+#include <string>
+#include <fstream>
+#include <vector>
+
+static inline void SplitData(const std::string &in, std::vector<std::string> &out, std::string token)
+{
+    out.clear();
+    std::string temp;
+    for (int i = 0; i < int(in.size()); i++)
+    {
+        std::string test = in.substr(i, token.size());
+        if (test == token)
+        {
+            if (!temp.empty())
+            {
+                out.push_back(temp);
+                temp.clear();
+                i += (int)token.size() - 1;
+            }
+            else
+            {
+                out.push_back("");
+            }
+        }
+        else if (i + token.size() >= in.size())
+        {
+            temp += in.substr(i, token.size());
+            out.push_back(temp);
+            break;
+        }
+        else
+        {
+            temp += in[i];
+        }
+    }
+}
+
+static bool LoadOBJ(std::string filename, memory_arena *arena, object *object)
+{
+    if (filename.substr(filename.size() - 4, 4) != ".obj")
+        return false;
+
+    std::ifstream file(filename);
+
+    if (!file.is_open())
+        return false;
+
+    std::vector<vec3> positions;
+    std::vector<vec2> texCoords;
+    std::vector<vec3> normals;
+
+    std::string tag;
+    std::string data;
+    std::string line;
+
+    u32 nVertices = 0;
+    while (std::getline(file, line))
+    {
+        if (!line.empty())
+        {
+            size_t tagStart = line.find_first_not_of(" \t");
+            size_t tagEnd = line.find_first_of(" \t", tagStart);
+            if (tagStart != std::string::npos && tagEnd != std::string::npos)
+                tag = line.substr(tagStart, tagEnd - tagStart);
+            else if (tagStart != std::string::npos)
+                tag = line.substr(tagStart);
+        }
+
+        if (tag == "f")
+            nVertices += 3;
+    }
+    object->vertices = ReserveArrayMemory(arena, nVertices, vertex);
+    object->nVertices = nVertices;
+    file.clear();
+    file.seekg(0);
+
+    i32 i = 0;
+    while (std::getline(file, line))
+    {
+        if (!line.empty())
+        {
+            size_t tagStart = line.find_first_not_of(" \t");
+            size_t tagEnd = line.find_first_of(" \t", tagStart);
+            if (tagStart != std::string::npos && tagEnd != std::string::npos)
+                tag = line.substr(tagStart, tagEnd - tagStart);
+            else if (tagStart != std::string::npos)
+                tag = line.substr(tagStart);
+
+            size_t dataStart = line.find_first_not_of(" \t", tagEnd);
+            size_t dataEnd = line.find_last_not_of(" \t");
+            if (dataStart != std::string::npos && dataEnd != std::string::npos)
+                data = line.substr(dataStart, dataEnd - dataStart + 1);
+            else if (dataStart != std::string::npos)
+                data = line.substr(dataStart);
+        }
+
+        if (tag == "v")
+        {
+            std::vector<std::string> dataSplit;
+            SplitData(data, dataSplit, " ");
+
+            vec3 v;
+            v.x = std::stof(dataSplit[0]);
+            v.y = std::stof(dataSplit[1]);
+            v.z = std::stof(dataSplit[2]);
+            positions.push_back(v);
+        }
+        else if (tag == "vt")
+        {
+            std::vector<std::string> dataSplit;
+            SplitData(data, dataSplit, " ");
+
+            vec2 v;
+            v.x = std::stof(dataSplit[0]);
+            v.y = std::stof(dataSplit[1]);
+            texCoords.push_back(v);
+        }
+        else if (tag == "vn")
+        {
+            std::vector<std::string> dataSplit;
+            SplitData(data, dataSplit, " ");
+
+            vec3 v;
+            v.x = std::stof(dataSplit[0]);
+            v.y = std::stof(dataSplit[1]);
+            v.z = std::stof(dataSplit[2]);
+            normals.push_back(v);
+        }
+        else if (tag == "f")
+        {
+            std::vector<std::string> dataSplit; // p/t/n
+            SplitData(data, dataSplit, " ");
+
+            // Contains 3 indices to the vertices that make a triangle
+            // Cases:
+            // P
+            // P/TC
+            // P/TC/N
+            // P//N
+            std::vector<std::string> faceVert;
+
+            for (std::string faceVertString : dataSplit)
+            {
+                SplitData(faceVertString, faceVert, "/");
+
+                vertex v = {};
+
+                // We always have the position index
+                i32 index = std::stoi(faceVert[0]) - 1;
+                v.pos = positions[index];
+
+                // Position/Texture Coordinates
+                if (faceVert.size() == 2)
+                {
+                    index = std::stoi(faceVert[1]) - 1;
+                    v.texCoord = texCoords[index];
+                }
+                else if (faceVert.size() == 3)
+                {
+                    // Position/Texture Coordinate/Normal
+                    if (faceVert[1] != "")
+                    {
+                        index = std::stoi(faceVert[1]) - 1;
+                        v.texCoord = texCoords[index];
+
+                        index = std::stoi(faceVert[2]) - 1;
+                        v.normal = normals[index];
+                    }
+                    // Position//Normal
+                    else
+                    {
+                        index = std::stoi(faceVert[2]) - 1;
+                        v.normal = normals[index];
+                    }
+                }
+                object->vertices[i] = v;
+                i++;
+            }
+        }
+    }
+    file.close();
+    return true;
+}
+
 static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memory)
 {
     e->input = {};
@@ -91,34 +275,15 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
 
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
     state->background.opacity = 1.0f;
-
-    LoadOBJ("suzanne.obj");
+    state->orientation = {};
 
     InitializeMemoryArena(&state->memoryArena,
                           (u8 *)memory->permanentMemory + sizeof(engine_state),
                           memory->permanentMemorySize - sizeof(engine_state));
 
-    state->orientation = {};
+    LoadOBJ("gourad.obj", &state->memoryArena, &state->bunny);
+    state->bunny.pos = {0.0f, 0.0f, 20.0f};
 
-    /*
-    // Make cube
-    state->cubeMeshUnfolded = ReserveMeshMemory(&state->memoryArena, 14, 36);
-    LoadUnfoldedCubeMesh(&state->cubeMeshUnfolded, 1.0f);
-    state->cubePeepo = MakeCubeUnfolded(&state->cubeMeshUnfolded, {}, {0.0f, 0.0f, 2.0f}, 1.0f);
-    LoadBitmap(&state->peepoTexture, memory->DEBUGReadFile, "peepo.bmp");
-
-
-    // Make plane
-    i32 divisions = 20;
-    i32 nVertices = (divisions + 1) * (divisions + 1);
-    i32 nIndices = (divisions * divisions * 2) * 3;
-    f32 side = 0.8f;
-    state->planeMesh = ReserveMeshMemory(&state->memoryArena, nVertices, nIndices);
-    LoadSquarePlaneMesh(&state->planeMesh, side, divisions);
-    state->plane = MakeSquarePlane(&state->planeMesh, {}, {0.0f, 0.0f, 2.0f}, side, divisions);
-    LoadBitmap(&state->planeTexture, memory->DEBUGReadFile, "hy3d_plane.bmp");
-    state->planeWave.Initialize(0.05f, 11.0f, 8.0f);
-*/
     state->lightDir = {0.5, 0.0, 1.0f};
 
     memory->isInitialized = true;
@@ -190,13 +355,12 @@ static void Render(hy3d_engine *e, engine_state *state)
 {
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
 
-    //mat3 rotation;
-//
-    //rotation = RotateX(state->orientation.thetaX) *
-    //           RotateY(state->orientation.thetaY) *
-    //           RotateZ(state->orientation.thetaZ);
-    //DrawOBJ(*state->bunny.mesh, {}, state->bunny.pos, {255, 255, 255},
-    //        state->lightDir, &e->pixelBuffer, &e->screenTransformer);
+    mat3 rotation = RotateX(state->orientation.thetaX) *
+                    RotateY(state->orientation.thetaY) *
+                    RotateZ(state->orientation.thetaZ);
+
+    DrawOBJ(&state->bunny, rotation, state->bunny.pos, {255, 255, 255},
+            state->lightDir, &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

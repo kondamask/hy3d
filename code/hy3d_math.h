@@ -295,7 +295,7 @@ static mat3 Identity()
         0.0f, 1.0f, 0.0f,
         0.0f, 0.0f, 1.0f};
 }
-
+*/
 static mat3 Scale(float factor)
 {
     return {
@@ -303,7 +303,7 @@ static mat3 Scale(float factor)
         0.0f, factor, 0.0f,
         0.0f, 0.0f, factor};
 }
-*/
+
 static mat3 RotateZ(float theta)
 {
     float sinTheta = sinf(theta);

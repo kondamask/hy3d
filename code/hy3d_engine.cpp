@@ -113,7 +113,7 @@ static inline void SplitData(const std::string &in, std::vector<std::string> &ou
     }
 }
 
-static bool LoadOBJ(std::string filename, memory_arena *arena, object *object)
+static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, vec3 position, vec3 material)
 {
     if (filename.substr(filename.size() - 4, 4) != ".obj")
         return false;
@@ -260,6 +260,8 @@ static bool LoadOBJ(std::string filename, memory_arena *arena, object *object)
         }
     }
     file.close();
+    object->pos = position;
+    object->mat = material;
     return true;
 }
 
@@ -282,18 +284,17 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
 
     state->curObject = &state->bunny;
 
-    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny);
-    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey);
-    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad);
-    state->bunny.pos = {0.0f, -0.1f, 1.0f};
-    state->monkey.pos = {0.0f, 0.0f, 5.0f};
-    state->gourad.pos = {0.0f, 0.0f, 5.0f};
+    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, {0.0f, -0.1f, 1.0f}, {1.0f, 0.0f, 0.0f});
+    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, {0.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f});
+    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
 
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
     state->background.opacity = 1.0f;
     state->orientation = {};
 
-    state->lightDir = {0.0, 0.0, 1.0f};
+    state->diffuse.intensity = {1.0f, 1.0f, 1.0f};
+    state->diffuse.direction = {0.0f, 0.0f, 1.0f};
+    state->ambient = {0.2f, 0.15f, 0.25f};
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -316,48 +317,39 @@ static void Update(hy3d_engine *e, engine_state *state)
     // Cube Control
     f32 speed = 2.5f * dt;
     if (e->input.keyboard.isPressed[UP])
-    {
-        state->orientation.thetaX += speed;
-    }
+        state->curObject->orientation.thetaX += speed;
     if (e->input.keyboard.isPressed[DOWN])
-    {
-        state->orientation.thetaX -= speed;
-    }
+        state->curObject->orientation.thetaX -= speed;
     if (e->input.keyboard.isPressed[LEFT])
-    {
-        state->orientation.thetaY += speed;
-    }
+        state->curObject->orientation.thetaY += speed;
     if (e->input.keyboard.isPressed[RIGHT])
-    {
-        state->orientation.thetaY -= speed;
-    }
+        state->curObject->orientation.thetaY -= speed;
     if (e->input.keyboard.isPressed[Q])
-        state->orientation.thetaZ += speed;
+        state->curObject->orientation.thetaZ += speed;
     if (e->input.keyboard.isPressed[W])
-        state->orientation.thetaZ -= speed;
+        state->curObject->orientation.thetaZ -= speed;
     if (e->input.keyboard.isPressed[R])
     {
-        state->orientation.thetaX = 0.0f;
-        state->orientation.thetaY = 0.0f;
-        state->orientation.thetaZ = 0.0f;
-    }
-    f32 offsetZ = 1.0f * dt;
-    if (e->input.keyboard.isPressed[Z])
-    {
-        state->curObject->pos.z -= offsetZ;
-    }
-    if (e->input.keyboard.isPressed[X])
-    {
-        state->curObject->pos.z += offsetZ;
+        state->curObject->orientation.thetaX = 0.0f;
+        state->curObject->orientation.thetaY = 0.0f;
+        state->curObject->orientation.thetaZ = 0.0f;
     }
 
+    f32 offsetZ = 1.0f * dt;
+    if (e->input.keyboard.isPressed[Z])
+        state->curObject->pos.z -= offsetZ;
+    if (e->input.keyboard.isPressed[X])
+        state->curObject->pos.z += offsetZ;
+
     if (e->input.keyboard.isPressed[C])
-    {
-        state->lightDir.x -= speed;
-    }
+        state->diffuse.direction.x -= speed;
     if (e->input.keyboard.isPressed[V])
+        state->diffuse.direction.x += speed;
+    if (e->input.keyboard.isPressed[SHIFT])
     {
-        state->lightDir.x += speed;
+        state->diffuse.direction.x = 0;
+        state->diffuse.direction.y = 0;
+        state->diffuse.direction.z *= -1.0f;
     }
 }
 
@@ -365,12 +357,8 @@ static void Render(hy3d_engine *e, engine_state *state)
 {
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
 
-    mat3 rotation = RotateX(state->orientation.thetaX) *
-                    RotateY(state->orientation.thetaY) *
-                    RotateZ(state->orientation.thetaZ);
-
-    DrawOBJ(state->curObject, rotation, state->curObject->pos, {255, 255, 255},
-            state->lightDir, &e->pixelBuffer, &e->screenTransformer);
+    DrawObject_Flat(state->curObject, state->diffuse, state->ambient,
+                    &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

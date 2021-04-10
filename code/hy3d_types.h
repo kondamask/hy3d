@@ -28,3 +28,8 @@ inline i16 RoundF32toI16(f32 in)
 {
     return (i16)(ceilf(in - 0.5f));
 }
+
+inline i8 RoundF32toI8(f32 in)
+{
+    return (i8)(ceilf(in - 0.5f));
+}

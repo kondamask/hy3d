@@ -103,3 +103,12 @@ struct vertex_shader_wave
         time = 0.0f;
     }
 };
+
+struct diffuse
+{
+    vec3 intensity;
+    vec3 direction;
+};
+
+typedef vec3 ambient;
+typedef vec3 material;

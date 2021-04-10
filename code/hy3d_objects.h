@@ -27,6 +27,7 @@ struct object
 {
     vertex *vertices;
     i32 nVertices;
+    material mat;
     orientation orientation;
     vec3 pos;
 };

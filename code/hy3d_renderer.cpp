@@ -208,7 +208,7 @@ static inline color GetShadedColor(color c, vec3 shade)
 }
 
 static void DrawFlatTriangle(
-    pixel_buffer *pixelBuffer, color c, vec3 shade,
+    pixel_buffer *pixelBuffer, color c,
     vertex leftStart, vertex rightStart, vertex dvLeft, vertex dvRight,
     f32 yTopF32, f32 yBottomF32)
 {
@@ -221,7 +221,6 @@ static void DrawFlatTriangle(
     vertex leftToRightStep;
     vertex inTriangleCoord;
     f32 objectSpazeZ;
-    c = GetShadedColor(c, shade);
 
     for (i16 y = yTop; y > yBottom; y--)
     {
@@ -244,21 +243,21 @@ static void DrawFlatTriangle(
     }
 }
 
-static void DrawTriangleSolid(pixel_buffer *pixelBuffer, triangle t, color c, vec3 shade)
+static void DrawTriangleSolid(pixel_buffer *pixelBuffer, triangle t, color c)
 {
     processed_triangle_result p = ProcessTriangle(&t);
 
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
-        DrawFlatTriangle(pixelBuffer, c, shade, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
     else
-        DrawFlatTriangle(pixelBuffer, c, shade, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
 
     //Bottom Half | Flat Top
     if (p.isLeftSideMajor)
-        DrawFlatTriangle(pixelBuffer, c, shade, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangle(pixelBuffer, c, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
     else
-        DrawFlatTriangle(pixelBuffer, c, shade, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangle(pixelBuffer, c, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
 static void DrawFlatTriangleTextured(
@@ -387,11 +386,11 @@ static inline void VertexShaderWave(vertex *v, void *properties)
     v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
 }
 
-static vec3 FlatShading(vec3 normal, vec3 diffuse, vec3 dir, vec3 ambient, vec3 material)
+static vec3 FlatShading(vec3 normal, diffuse d, ambient a, material m)
 {
     normal.normalize();
-    diffuse = diffuse * maxF32(0.0f, -normal * dir);
-    vec3 result = Saturated(HadamardProduct(material, diffuse + ambient));
+    d.intensity = d.intensity * maxF32(0.0f, -normal * d.direction);
+    vec3 result = Saturated(HadamardProduct(m, d.intensity + a));
     return result;
 }
 
@@ -403,8 +402,9 @@ static vec3 GouraudShading(vec3 normal, mat3 rotation, vec3 diffuse, vec3 dir, v
 }
 
 static void DrawObjectTextured(
-    mesh mesh, mat3 rotation, vec3 translation, loaded_bitmap *bmp,
-    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties, vec3 lightDir,
+    mesh mesh, mat3 rotation, vec3 translation,
+    diffuse d, ambient a, material m, loaded_bitmap *bmp,
+    void (*VertexShader)(vertex *, void *), void *vertexShaderProperties,
     pixel_buffer *pixelBuffer, screen_transformer *st)
 {
     GetMeshCopy();
@@ -436,7 +436,7 @@ static void DrawObjectTextured(
         bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
-            vec3 shadeFactor = FlatShading(normal, {1.0f, 1.0f, 1.0f}, lightDir, {0.1, 0.1f, 0.2f}, {1.0f, 1.0f, 1.0f});
+            vec3 shadeFactor = FlatShading(normal, d, a, m);
 
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
@@ -449,35 +449,44 @@ static void DrawObjectTextured(
     FreeMeshCopy();
 }
 
-static void DrawOBJ(
-    object *o, mat3 rotation, vec3 translation, color c,
-    vec3 lightDir, pixel_buffer *pixelBuffer, screen_transformer *st)
+static inline color Vec3ToRGB(vec3 color_in)
+{
+    color result;
+    result.r = RoundF32toI8(color_in.r * 255.0f);
+    result.g = RoundF32toI8(color_in.g * 255.0f);
+    result.b = RoundF32toI8(color_in.b * 255.0f);
+    return result;
+} 
+
+static void DrawObject_Flat(object *o, diffuse d, ambient a,
+                           pixel_buffer *pixelBuffer, screen_transformer *st)
 {
     vertex *vertices = (vertex *)calloc(o->nVertices, sizeof(vertex));
     memcpy(vertices, o->vertices, o->nVertices * sizeof(vertex));
 
+    mat3 rotation = RotateX(o->orientation.thetaX) *
+                    RotateY(o->orientation.thetaY) *
+                    RotateZ(o->orientation.thetaZ);
+    vec3 translation = o->pos;
+
     for (i32 i = 0; i < o->nVertices; i++)
-    {
         vertices[i].pos = vertices[i].pos * rotation + translation;
-    }
 
     // Find and Draw Visible Triangles
+    color c;
     for (i32 i = 0; i + 2 < o->nVertices; i += 3)
     {
-        triangle t = {vertices[i],
-                      vertices[i + 1],
-                      vertices[i + 2]};
+        triangle t = {vertices[i], vertices[i + 1], vertices[i + 2]};
         vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
         bool isVisible = (normal * t.v0.pos) <= 0;
         if (isVisible)
         {
-            vec3 shadeFactor = FlatShading(normal, {0.78f, 0.88f, 1.0f}, lightDir, {0.2f, 0.2f, 0.3f}, {1.0f, 1.0f, 1.0f});
-            //vec3 shadeFactor = GouraudShading(normal, rotation, {0.78f, 0.88f, 1.0f}, lightDir, {0.2f, 0.2f, 0.3f}, {1.0f, 1.0f, 1.0f});
+            c = Vec3ToRGB(FlatShading(normal, d, a, o->mat));
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
 
-            DrawTriangleSolid(pixelBuffer, t, c, shadeFactor);
+            DrawTriangleSolid(pixelBuffer, t, c);
         }
     }
 

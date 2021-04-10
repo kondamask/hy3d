@@ -167,15 +167,16 @@ struct engine_state
 {
     memory_arena memoryArena;
 
-    loaded_bitmap background;
-
     object bunny;
     object monkey;
     object gourad;
     object *curObject;
     orientation orientation;
 
-    vec3 lightDir;
+    loaded_bitmap background;
+
+    diffuse diffuse;
+    ambient ambient;
 };
 
 struct hy3d_engine

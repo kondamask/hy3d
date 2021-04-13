@@ -128,6 +128,8 @@ static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, v
     std::string line;
 
     u32 nVertices = 0;
+    object->hasNormals = false;
+
     while (std::getline(file, line))
     {
         if (!line.empty())
@@ -142,6 +144,8 @@ static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, v
 
         if (tag == "f")
             nVertices += 3;
+        if (tag == "vn")
+            object->hasNormals = true;
     }
     object->vertices = ReserveArrayMemory(arena, nVertices, vertex);
     object->nVertices = nVertices;
@@ -284,8 +288,8 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
 
     state->curObject = &state->bunny;
 
-    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, {0.0f, -0.1f, 1.0f}, {1.0f, 0.0f, 0.0f});
-    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, {0.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f});
+    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
+    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
     LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
 
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
@@ -357,8 +361,8 @@ static void Render(hy3d_engine *e, engine_state *state)
 {
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
 
-    DrawObject_Flat(state->curObject, state->diffuse, state->ambient,
-                    &e->pixelBuffer, &e->screenTransformer);
+    DrawObject(state->curObject, state->diffuse, state->ambient,
+               &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

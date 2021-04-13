@@ -68,6 +68,8 @@ struct vec3
     }
 };
 
+typedef vec3 colorV3;
+
 // NOTE:  addition, subtraction
 inline vec3 operator+(vec3 a, vec3 b)
 {

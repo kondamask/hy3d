@@ -33,7 +33,7 @@ static void PutPixel(pixel_buffer *pixelBuffer, i16 x, i16 y, u32 c)
         *pixel = c;
 }
 
-static inline void ClearZBuffer(pixel_buffer *pixelBuffer)
+static void ClearZBuffer(pixel_buffer *pixelBuffer)
 {
     i32 zBufferSize = pixelBuffer->size / pixelBuffer->bytesPerPixel;
     for (i32 i = 0; i < zBufferSize; i++)
@@ -54,149 +54,57 @@ static bool UpdateZBuffer(pixel_buffer *pixelBuffer, i32 x, i32 y, f32 value)
     return false;
 }
 
-static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// NOTE:  Effects
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+static inline void VertexShaderWave(vertex *v, void *properties)
 {
-    f32 zInv = 1.0f / v->pos.z;
-    *v *= zInv;
-    v->pos.x = (v->pos.x + 1.0f) * st->xFactor;
-    v->pos.y = (v->pos.y + 1.0f) * st->yFactor;
-    v->pos.z = zInv;
+    vertex_shader_wave *wave = (vertex_shader_wave *)properties;
+    v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
 }
 
+static vec3 FlatShading(vec3 n, diffuse d, ambient a, material m)
+{
+    n.normalize();
+    d.intensity = d.intensity * maxF32(0.0f, -n * d.direction);
+    vec3 result = Saturated(HadamardProduct(m, d.intensity + a));
+    return result;
+}
+
+static vec3 CellShading(vec3 n, diffuse d, ambient a, material m, f32 threshold)
+{
+    n.normalize();
+    d.intensity = d.intensity * maxF32(0.0f, -n * d.direction);
+    vec3 shade = d.intensity + a;
+    f32 avgShade = (a.r + shade.g + shade.b) / 3.0f;
+    if (avgShade > threshold)
+        return m;
+    shade = {threshold, threshold, threshold};
+    vec3 result = Saturated(HadamardProduct(m, shade));
+    return result;
+}
+
+static void GouraudShading(triangle_smooth *t, diffuse d, ambient a, material m, mat3 r)
+{
+    for (i8 i = 0; i < 3; i++)
+    {
+        t->v[i].normal = t->v[i].normal * r;
+        vec3 dif = d.intensity * maxF32(0.0f, -t->v[i].normal * d.direction);
+        t->v[i].color = Saturated(HadamardProduct(m, dif + a));
+    }
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// NOTE:  FLAT Triangle Rendering
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 static inline vertex Prestep(i32 rounded, f32 original, vertex step)
 {
     return (step * (original - (f32)rounded + 0.5f));
 }
 
-static inline u32 GetTextureColorU32(loaded_bitmap *bmp, vec2 coord)
+static inline vertex_smooth Prestep(i32 rounded, f32 original, vertex_smooth step)
 {
-    f32 x = coord.x * bmp->width;
-    f32 y = coord.y * bmp->height;
-    f32 xMax = (f32)bmp->width - 1.0f;
-    f32 yMax = (f32)bmp->height - 1.0f;
-    if (x < 0.0f)
-        x = 0.0f;
-    else if (xMax < x)
-        x = bmp->width - 1.0f;
-    if (y < 0.0f)
-        y = 0.0f;
-    else if (yMax < y)
-        y = bmp->height - 1.0f;
-
-    return bmp->GetColorU32((i32)x, (i32)y);
-}
-
-static inline color GetTextureColorRGB(loaded_bitmap *bmp, vec2 coord)
-{
-    f32 x = coord.x * bmp->width;
-    f32 y = coord.y * bmp->height;
-    f32 xMax = (f32)bmp->width - 1.0f;
-    f32 yMax = (f32)bmp->height - 1.0f;
-    if (x < 0.0f)
-        x = 0.0f;
-    else if (xMax < x)
-        x = bmp->width - 1.0f;
-    if (y < 0.0f)
-        y = 0.0f;
-    else if (yMax < y)
-        y = bmp->height - 1.0f;
-
-    return bmp->GetColorRGB((i32)x, (i32)y);
-}
-
-static inline u32 GetTextureWrapColorU32(loaded_bitmap *bmp, vec2 coord)
-{
-    f32 x = coord.x * (f32)bmp->width;
-    f32 y = coord.y * (f32)bmp->height;
-    f32 xMax = (f32)bmp->width - 1.0f;
-    f32 yMax = (f32)bmp->height - 1.0f;
-    x = fmodf(x, xMax);
-    y = fmodf(y, yMax);
-    if (x < 0.0f)
-        x += xMax;
-    if (y < 0.0f)
-        y += yMax;
-
-    return bmp->GetColorU32((i32)x, (i32)y);
-}
-
-static processed_triangle_result ProcessTriangle(triangle *t)
-{
-    processed_triangle_result result = {};
-
-    // Sort by y: v0 is at the top, v2 at the bottom
-    if (t->v0.pos.y < t->v1.pos.y)
-        std::swap(t->v0, t->v1);
-    if (t->v1.pos.y < t->v2.pos.y)
-        std::swap(t->v1, t->v2);
-    if (t->v0.pos.y < t->v1.pos.y)
-        std::swap(t->v0, t->v1);
-
-    // Sort by x:
-    // if v1.pos.y is the same as v0.pos.y, v1 should be to the right
-    // if v1.pos.y is the same as v2.pos.y, v1 it should be to the left
-    if (t->v0.pos.y == t->v1.pos.y && t->v0.pos.x > t->v1.pos.x)
-        std::swap(t->v0, t->v1);
-    else if (t->v1.pos.y == t->v2.pos.y && t->v1.pos.x > t->v2.pos.x)
-        std::swap(t->v1, t->v2);
-
-    // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
-    // same y as v1 but on the opposite side of the triangle
-    result.split = t->v0.interpolateTo(t->v1, t->v2);
-
-    // Check if hypotinus is on the left
-    result.isLeftSideMajor = t->v1.pos.x > result.split.pos.x;
-
-    // Calculate Slopes and Texture Lookup steps
-    result.dv01 = -VertexSlopeY(t->v0, t->v1);
-    result.dv02 = -VertexSlopeY(t->v0, t->v2);
-    result.dv12 = -VertexSlopeY(t->v1, t->v2);
-
-    return result;
-}
-
-static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, color c)
-{
-    f32 dx = b.x - a.x;
-    f32 dy = b.y - a.y;
-    if (dx == 0.0f && dy == 0.0f)
-    {
-        PutPixel(pixelBuffer, (i16)a.x, (i16)a.y, c);
-    }
-    else if (fabsf(dy) >= fabsf(dx))
-    {
-        if (dy < 0.0f)
-        {
-            vec3 temp = a;
-            a = b;
-            b = temp;
-        }
-
-        f32 m = dx / dy;
-        for (f32 x = a.x, y = a.y;
-             y < b.y;
-             y += 1.0f, x += m)
-        {
-            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
-        }
-    }
-    else
-    {
-        if (dx < 0.0f)
-        {
-            vec3 temp = a;
-            a = b;
-            b = temp;
-        }
-
-        f32 m = dy / dx;
-        for (f32 x = a.x, y = a.y;
-             x < b.x;
-             x += 1.0f, y += m)
-        {
-            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
-        }
-    }
+    return (step * (original - (f32)rounded + 0.5f));
 }
 
 static inline color GetShadedColor(color c, vec3 shade)
@@ -234,7 +142,6 @@ static void DrawFlatTriangle(
             objectSpazeZ = 1.0f / inTriangleCoord.pos.z;
             if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
             {
-
                 PutPixel(pixelBuffer, x, y, c);
             }
         }
@@ -243,21 +150,22 @@ static void DrawFlatTriangle(
     }
 }
 
-static void DrawTriangleSolid(pixel_buffer *pixelBuffer, triangle t, color c)
+static color GetTextureColorRGB(loaded_bitmap *bmp, vec2 coord)
 {
-    processed_triangle_result p = ProcessTriangle(&t);
+    f32 x = coord.x * bmp->width;
+    f32 y = coord.y * bmp->height;
+    f32 xMax = (f32)bmp->width - 1.0f;
+    f32 yMax = (f32)bmp->height - 1.0f;
+    if (x < 0.0f)
+        x = 0.0f;
+    else if (xMax < x)
+        x = bmp->width - 1.0f;
+    if (y < 0.0f)
+        y = 0.0f;
+    else if (yMax < y)
+        y = bmp->height - 1.0f;
 
-    // Top Half | Flat Bottom Triangle
-    if (p.isLeftSideMajor)
-        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
-    else
-        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
-
-    //Bottom Half | Flat Top
-    if (p.isLeftSideMajor)
-        DrawFlatTriangle(pixelBuffer, c, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
-    else
-        DrawFlatTriangle(pixelBuffer, c, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+    return bmp->GetColorRGB((i32)x, (i32)y);
 }
 
 static void DrawFlatTriangleTextured(
@@ -296,9 +204,101 @@ static void DrawFlatTriangleTextured(
     }
 }
 
+static void DrawFlatTriangleSmooth(
+    pixel_buffer *pixelBuffer,
+    vertex_smooth leftStart, vertex_smooth rightStart,
+    vertex_smooth dvLeft, vertex_smooth dvRight,
+    f32 yTopF32, f32 yBottomF32)
+{
+    i16 xLeft;
+    i16 xRight;
+    i16 yTop = RoundF32toI16(yTopF32);
+    i16 yBottom = RoundF32toI16(yBottomF32);
+    vertex_smooth left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
+    vertex_smooth right = rightStart + Prestep(yTop, yTopF32, -dvRight);
+    vertex_smooth leftToRightStep;
+    vertex_smooth inTriangleCoord;
+    f32 objectSpazeZ;
+
+    for (i16 y = yTop; y > yBottom; y--)
+    {
+        xLeft = RoundF32toI16(left.pos.x);
+        xRight = RoundF32toI16(right.pos.x);
+        leftToRightStep = VertexSlopeX(left, right);
+        inTriangleCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+
+        for (i16 x = xLeft; x < xRight; x++, inTriangleCoord -= leftToRightStep)
+        {
+            objectSpazeZ = 1.0f / inTriangleCoord.pos.z;
+            if (UpdateZBuffer(pixelBuffer, x, y, objectSpazeZ))
+            {
+                color c = Vec3ToRGB(inTriangleCoord.color);
+                PutPixel(pixelBuffer, x, y, c);
+            }
+        }
+        left -= dvLeft;
+        right -= dvRight;
+    }
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// NOTE:  GENERIC Triangle Rendering
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+static processed_triangle ProcessTriangle(triangle *t)
+{
+    processed_triangle result = {};
+
+    // Sort by y: v0 is at the top, v2 at the bottom
+    if (t->v0.pos.y < t->v1.pos.y)
+        std::swap(t->v0, t->v1);
+    if (t->v1.pos.y < t->v2.pos.y)
+        std::swap(t->v1, t->v2);
+    if (t->v0.pos.y < t->v1.pos.y)
+        std::swap(t->v0, t->v1);
+
+    // Sort by x:
+    // if v1.pos.y is the same as v0.pos.y, v1 should be to the right
+    // if v1.pos.y is the same as v2.pos.y, v1 it should be to the left
+    if (t->v0.pos.y == t->v1.pos.y && t->v0.pos.x > t->v1.pos.x)
+        std::swap(t->v0, t->v1);
+    else if (t->v1.pos.y == t->v2.pos.y && t->v1.pos.x > t->v2.pos.x)
+        std::swap(t->v1, t->v2);
+
+    // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
+    // same y as v1 but on the opposite side of the triangle
+    result.split = t->v0.interpolateTo(t->v1, t->v2);
+
+    // Check if hypotinus is on the left
+    result.isLeftSideMajor = t->v1.pos.x > result.split.pos.x;
+
+    // Calculate Slopes and Texture Lookup steps
+    result.dv01 = -VertexSlopeY(t->v0, t->v1);
+    result.dv02 = -VertexSlopeY(t->v0, t->v2);
+    result.dv12 = -VertexSlopeY(t->v1, t->v2);
+
+    return result;
+}
+
+static void DrawTriangleFlatShaded(pixel_buffer *pixelBuffer, triangle t, color c)
+{
+    processed_triangle p = ProcessTriangle(&t);
+
+    // Top Half | Flat Bottom Triangle
+    if (p.isLeftSideMajor)
+        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+    else
+        DrawFlatTriangle(pixelBuffer, c, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+
+    //Bottom Half | Flat Top
+    if (p.isLeftSideMajor)
+        DrawFlatTriangle(pixelBuffer, c, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+    else
+        DrawFlatTriangle(pixelBuffer, c, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+}
+
 static void DrawTriangleTextured(pixel_buffer *pixelBuffer, triangle t, loaded_bitmap *bmp, vec3 shade)
 {
-    processed_triangle_result p = ProcessTriangle(&t);
+    processed_triangle p = ProcessTriangle(&t);
 
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
@@ -313,51 +313,90 @@ static void DrawTriangleTextured(pixel_buffer *pixelBuffer, triangle t, loaded_b
         DrawFlatTriangleTextured(pixelBuffer, bmp, shade, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
-static void DrawFlatTriangleTextureWrap(
-    pixel_buffer *pixelBuffer, loaded_bitmap *bmp,
-    vertex leftStart, vertex rightStart,
-    vertex dvLeft, vertex dvRight,
-    f32 yTopF32, f32 yBottomF32)
+static processed_smooth_triangle ProcessSmoothTriangle(
+    triangle_smooth *t, diffuse d, ambient a, material m, mat3 r)
 {
-    i16 xLeft;
-    i16 xRight;
-    i16 yTop = RoundF32toI16(yTopF32);
-    i16 yBottom = RoundF32toI16(yBottomF32);
-    vertex texCoord;
-    vertex left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
-    vertex right = rightStart + Prestep(yTop, yTopF32, -dvRight);
-    vertex leftToRightStep;
-    for (i16 y = yTop; y > yBottom; y--)
-    {
-        xLeft = RoundF32toI16(left.pos.x);
-        xRight = RoundF32toI16(right.pos.x);
-        leftToRightStep = (right - left) / (right.pos.x - left.pos.x);
-        texCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+    processed_smooth_triangle result = {};
 
-        for (i16 x = xLeft; x < xRight; x++, texCoord += leftToRightStep)
-        {
-            u32 c = GetTextureWrapColorU32(bmp, texCoord.texCoord);
-            PutPixel(pixelBuffer, x, y, c);
-        }
-        left -= dvLeft;
-        right -= dvRight;
+    // Sort by y: v0 is at the top, v2 at the bottom
+    if (t->v0.pos.y < t->v1.pos.y)
+    {
+        std::swap(t->v0, t->v1);
     }
+    if (t->v1.pos.y < t->v2.pos.y)
+    {
+        std::swap(t->v1, t->v2);
+    }
+    if (t->v0.pos.y < t->v1.pos.y)
+    {
+        std::swap(t->v0, t->v1);
+    }
+
+    // Sort by x:
+    // if v1.pos.y is the same as v0.pos.y, v1 should be to the right
+    // if v1.pos.y is the same as v2.pos.y, v1 it should be to the left
+    if (t->v0.pos.y == t->v1.pos.y && t->v0.pos.x > t->v1.pos.x)
+    {
+        std::swap(t->v0, t->v1);
+    }
+    else if (t->v1.pos.y == t->v2.pos.y && t->v1.pos.x > t->v2.pos.x)
+    {
+        std::swap(t->v1, t->v2);
+    }
+
+    GouraudShading(t, d, a, m, r);
+
+    // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
+    // same y as v1 but on the opposite side of the triangle
+    result.split = t->v0.interpolateTo(t->v1, t->v2);
+
+    // Check if hypotinus is on the left
+    result.isLeftSideMajor = t->v1.pos.x > result.split.pos.x;
+
+    // Calculate Slopes and Texture Lookup steps
+    result.dv01 = -VertexSlopeY(t->v0, t->v1);
+    result.dv02 = -VertexSlopeY(t->v0, t->v2);
+    result.dv12 = -VertexSlopeY(t->v1, t->v2);
+
+    return result;
 }
 
-static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loaded_bitmap *bmp)
+static void DrawTriangleSmoothShaded(pixel_buffer *pixelBuffer, triangle_smooth t, diffuse d, ambient a, material m, mat3 r)
 {
-    processed_triangle_result p = ProcessTriangle(&t);
+    processed_smooth_triangle p = ProcessSmoothTriangle(&t, d, a, m, r);
+
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
-        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleSmooth(pixelBuffer, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
     else
-        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+        DrawFlatTriangleSmooth(pixelBuffer, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
 
     //Bottom Half | Flat Top
     if (p.isLeftSideMajor)
-        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangleSmooth(pixelBuffer, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
     else
-        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+        DrawFlatTriangleSmooth(pixelBuffer, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// NOTE:  Generic Mesh & Bitmap Rendering
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
+{
+    f32 zInv = 1.0f / v->pos.z;
+    *v *= zInv;
+    v->pos.x = (v->pos.x + 1.0f) * st->xFactor;
+    v->pos.y = (v->pos.y + 1.0f) * st->yFactor;
+    v->pos.z = zInv;
+}
+
+static inline void TransformVertexToScreen(screen_transformer *st, vertex_smooth *v)
+{
+    f32 zInv = 1.0f / v->pos.z;
+    *v *= zInv;
+    v->pos.x = (v->pos.x + 1.0f) * st->xFactor;
+    v->pos.y = (v->pos.y + 1.0f) * st->yFactor;
+    v->pos.z = zInv;
 }
 
 #define GetMeshCopy()        \
@@ -378,27 +417,6 @@ static void FreeMeshCopy_(vertex *vertices, triangle_index *indices)
 {
     free(vertices);
     free(indices);
-}
-
-static inline void VertexShaderWave(vertex *v, void *properties)
-{
-    vertex_shader_wave *wave = (vertex_shader_wave *)properties;
-    v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
-}
-
-static vec3 FlatShading(vec3 normal, diffuse d, ambient a, material m)
-{
-    normal.normalize();
-    d.intensity = d.intensity * maxF32(0.0f, -normal * d.direction);
-    vec3 result = Saturated(HadamardProduct(m, d.intensity + a));
-    return result;
-}
-
-static vec3 GouraudShading(vec3 normal, mat3 rotation, vec3 diffuse, vec3 dir, vec3 ambient, vec3 material)
-{
-    diffuse = diffuse * maxF32(0.0f, -(normal * rotation) * dir);
-    vec3 result = Saturated(HadamardProduct(material, diffuse + ambient));
-    return result;
 }
 
 static void DrawObjectTextured(
@@ -449,86 +467,58 @@ static void DrawObjectTextured(
     FreeMeshCopy();
 }
 
-static inline color Vec3ToRGB(vec3 color_in)
+static void DrawObject(object *o, diffuse d, ambient a,
+                       pixel_buffer *pixelBuffer, screen_transformer *st)
 {
-    color result;
-    result.r = RoundF32toI8(color_in.r * 255.0f);
-    result.g = RoundF32toI8(color_in.g * 255.0f);
-    result.b = RoundF32toI8(color_in.b * 255.0f);
-    return result;
-} 
-
-static void DrawObject_Flat(object *o, diffuse d, ambient a,
-                           pixel_buffer *pixelBuffer, screen_transformer *st)
-{
-    vertex *vertices = (vertex *)calloc(o->nVertices, sizeof(vertex));
-    memcpy(vertices, o->vertices, o->nVertices * sizeof(vertex));
-
     mat3 rotation = RotateX(o->orientation.thetaX) *
                     RotateY(o->orientation.thetaY) *
                     RotateZ(o->orientation.thetaZ);
     vec3 translation = o->pos;
 
-    for (i32 i = 0; i < o->nVertices; i++)
-        vertices[i].pos = vertices[i].pos * rotation + translation;
-
     // Find and Draw Visible Triangles
-    color c;
-    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
+    /*if (o->hasNormals)
     {
-        triangle t = {vertices[i], vertices[i + 1], vertices[i + 2]};
-        vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
-        bool isVisible = (normal * t.v0.pos) <= 0;
-        if (isVisible)
+        for (i32 i = 0; i + 2 < o->nVertices; i += 3)
         {
-            c = Vec3ToRGB(FlatShading(normal, d, a, o->mat));
-            TransformVertexToScreen(st, &t.v0);
-            TransformVertexToScreen(st, &t.v1);
-            TransformVertexToScreen(st, &t.v2);
 
-            DrawTriangleSolid(pixelBuffer, t, c);
+            triangle_smooth t = {
+                GetSmoothVertex(vertices[i]),
+                GetSmoothVertex(vertices[i + 1]),
+                GetSmoothVertex(vertices[i + 2])};
+            vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
+            bool isVisible = (normal * t.v0.pos) <= 0;
+            if (isVisible)
+            {
+                TransformVertexToScreen(st, &t.v0);
+                TransformVertexToScreen(st, &t.v1);
+                TransformVertexToScreen(st, &t.v2);
+
+                DrawTriangleSmoothShaded(pixelBuffer, t, d, a, o->mat, rotation);
+            }
         }
     }
-
-    free(vertices);
-}
-
-static void DrawObjectOutline(
-    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color c,
-    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
-{
-    // Apply Transformations
-    for (i32 i = 0; i < nVertices; i++)
+    else*/
     {
-        TransformVertexToScreen(st, &vertices[i]);
-    }
+        color c;
+        for (i32 i = 0; i + 2 < o->nVertices; i += 3)
+        {
+            triangle t = {o->vertices[i], o->vertices[i + 1], o->vertices[i + 2]};
+            t.v0.pos = t.v0.pos * rotation + translation;
+            t.v1.pos = t.v1.pos * rotation + translation;
+            t.v2.pos = t.v2.pos * rotation + translation;
+            vec3 normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
+            bool isVisible = (normal * t.v0.pos) <= 0;
+            if (isVisible)
+            {
+                //c = Vec3ToRGB(FlatShading(normal, d, a, {0.9f, 0.75f, 0.45f})); //o->mat));
+                c = Vec3ToRGB(CellShading(normal, d, a, o->mat, 0.65f));
+                TransformVertexToScreen(st, &t.v0);
+                TransformVertexToScreen(st, &t.v1);
+                TransformVertexToScreen(st, &t.v2);
 
-    // Find and Draw Visible Triangles
-    for (i32 i = 0; i < nLineIndices; i += 2)
-    {
-        vec3 a = vertices[lines[i]].pos;
-        vec3 b = vertices[lines[i + 1]].pos;
-        DrawLine(pixelBuffer, a, b, c);
-    }
-}
-
-static void DrawAxis3D(
-    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color *colors,
-    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
-{
-    // Apply Transformations
-    for (i32 i = 0; i < nVertices; i++)
-    {
-        vertices[i].pos = vertices[i].pos * rotation + translation;
-        TransformVertexToScreen(st, &vertices[i]);
-    }
-
-    // Find and Draw Visible Triangles
-    for (i32 i = 0; i < nLineIndices; i += 2)
-    {
-        vec3 a = vertices[lines[i]].pos;
-        vec3 b = vertices[lines[i + 1]].pos;
-        DrawLine(pixelBuffer, a, b, colors[i / 2]);
+                DrawTriangleFlatShaded(pixelBuffer, t, c);
+            }
+        }
     }
 }
 
@@ -595,3 +585,168 @@ static void DrawBitmap(loaded_bitmap *bmp, i32 xPos, i32 yPos, pixel_buffer *pix
         source += clipLeft + clipRight;
     }
 }
+
+/*
+static inline u32 GetTextureWrapColorU32(loaded_bitmap *bmp, vec2 coord)
+{
+    f32 x = coord.x * (f32)bmp->width;
+    f32 y = coord.y * (f32)bmp->height;
+    f32 xMax = (f32)bmp->width - 1.0f;
+    f32 yMax = (f32)bmp->height - 1.0f;
+    x = fmodf(x, xMax);
+    y = fmodf(y, yMax);
+    if (x < 0.0f)
+        x += xMax;
+    if (y < 0.0f)
+        y += yMax;
+
+    return bmp->GetColorU32((i32)x, (i32)y);
+}
+
+static void DrawFlatTriangleTextureWrap(
+    pixel_buffer *pixelBuffer, loaded_bitmap *bmp,
+    vertex leftStart, vertex rightStart,
+    vertex dvLeft, vertex dvRight,
+    f32 yTopF32, f32 yBottomF32)
+{
+    i16 xLeft;
+    i16 xRight;
+    i16 yTop = RoundF32toI16(yTopF32);
+    i16 yBottom = RoundF32toI16(yBottomF32);
+    vertex texCoord;
+    vertex left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
+    vertex right = rightStart + Prestep(yTop, yTopF32, -dvRight);
+    vertex leftToRightStep;
+    for (i16 y = yTop; y > yBottom; y--)
+    {
+        xLeft = RoundF32toI16(left.pos.x);
+        xRight = RoundF32toI16(right.pos.x);
+        leftToRightStep = (right - left) / (right.pos.x - left.pos.x);
+        texCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+
+        for (i16 x = xLeft; x < xRight; x++, texCoord += leftToRightStep)
+        {
+            u32 c = GetTextureWrapColorU32(bmp, texCoord.texCoord);
+            PutPixel(pixelBuffer, x, y, c);
+        }
+        left -= dvLeft;
+        right -= dvRight;
+    }
+}
+
+static void DrawTriangleTextureWrap(pixel_buffer *pixelBuffer, triangle t, loaded_bitmap *bmp)
+{
+    processed_triangle p = ProcessTriangle(&t);
+    // Top Half | Flat Bottom Triangle
+    if (p.isLeftSideMajor)
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+    else
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+
+    //Bottom Half | Flat Top
+    if (p.isLeftSideMajor)
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+    else
+        DrawFlatTriangleTextureWrap(pixelBuffer, bmp, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+}
+
+static void DrawLine(pixel_buffer *pixelBuffer, vec3 a, vec3 b, color c)
+{
+    f32 dx = b.x - a.x;
+    f32 dy = b.y - a.y;
+    if (dx == 0.0f && dy == 0.0f)
+    {
+        PutPixel(pixelBuffer, (i16)a.x, (i16)a.y, c);
+    }
+    else if (fabsf(dy) >= fabsf(dx))
+    {
+        if (dy < 0.0f)
+        {
+            vec3 temp = a;
+            a = b;
+            b = temp;
+        }
+
+        f32 m = dx / dy;
+        for (f32 x = a.x, y = a.y;
+             y < b.y;
+             y += 1.0f, x += m)
+        {
+            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
+        }
+    }
+    else
+    {
+        if (dx < 0.0f)
+        {
+            vec3 temp = a;
+            a = b;
+            b = temp;
+        }
+
+        f32 m = dy / dx;
+        for (f32 x = a.x, y = a.y;
+             x < b.x;
+             x += 1.0f, y += m)
+        {
+            PutPixel(pixelBuffer, (i16)x, (i16)y, c);
+        }
+    }
+}
+
+static void DrawObjectOutline(
+    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color c,
+    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
+{
+    // Apply Transformations
+    for (i32 i = 0; i < nVertices; i++)
+    {
+        TransformVertexToScreen(st, &vertices[i]);
+    }
+
+    // Find and Draw Visible Triangles
+    for (i32 i = 0; i < nLineIndices; i += 2)
+    {
+        vec3 a = vertices[lines[i]].pos;
+        vec3 b = vertices[lines[i + 1]].pos;
+        DrawLine(pixelBuffer, a, b, c);
+    }
+}
+
+static void DrawAxis3D(
+    vertex *vertices, i32 nVertices, i8 *lines, i8 nLineIndices, color *colors,
+    mat3 rotation, vec3 translation, pixel_buffer *pixelBuffer, screen_transformer *st)
+{
+    // Apply Transformations
+    for (i32 i = 0; i < nVertices; i++)
+    {
+        vertices[i].pos = vertices[i].pos * rotation + translation;
+        TransformVertexToScreen(st, &vertices[i]);
+    }
+
+    // Find and Draw Visible Triangles
+    for (i32 i = 0; i < nLineIndices; i += 2)
+    {
+        vec3 a = vertices[lines[i]].pos;
+        vec3 b = vertices[lines[i + 1]].pos;
+        DrawLine(pixelBuffer, a, b, colors[i / 2]);
+    }
+}
+
+static u32 GetTextureColorU32(loaded_bitmap *bmp, vec2 coord)
+{
+    f32 x = coord.x * bmp->width;
+    f32 y = coord.y * bmp->height;
+    f32 xMax = (f32)bmp->width - 1.0f;
+    f32 yMax = (f32)bmp->height - 1.0f;
+    if (x < 0.0f)
+        x = 0.0f;
+    else if (xMax < x)
+        x = bmp->width - 1.0f;
+    if (y < 0.0f)
+        y = 0.0f;
+    else if (yMax < y)
+        y = bmp->height - 1.0f;
+
+    return bmp->GetColorU32((i32)x, (i32)y);
+}*/

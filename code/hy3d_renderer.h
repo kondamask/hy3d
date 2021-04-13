@@ -21,11 +21,41 @@ struct color
     u8 b;
 };
 
+static inline color Vec3ToRGB(vec3 color_in)
+{
+    color result;
+    result.r = RoundF32toI8(color_in.r * 255.0f);
+    result.g = RoundF32toI8(color_in.g * 255.0f);
+    result.b = RoundF32toI8(color_in.b * 255.0f);
+    return result;
+}
+
 struct triangle
 {
-    vertex v0;
-    vertex v1;
-    vertex v2;
+    union
+    {
+        struct
+        {
+            vertex v0;
+            vertex v1;
+            vertex v2;
+        };
+        vertex v[3];
+    };
+};
+
+struct triangle_smooth
+{
+    union
+    {
+        struct
+        {
+            vertex_smooth v0;
+            vertex_smooth v1;
+            vertex_smooth v2;
+        };
+        vertex_smooth v[3];
+    };
 };
 
 // TODO: add Z later
@@ -79,12 +109,21 @@ struct loaded_bitmap
     }
 };
 
-struct processed_triangle_result
+struct processed_triangle
 {
     vertex split;
     vertex dv01;
     vertex dv02;
     vertex dv12;
+    bool isLeftSideMajor;
+};
+
+struct processed_smooth_triangle
+{
+    vertex_smooth split;
+    vertex_smooth dv01;
+    vertex_smooth dv02;
+    vertex_smooth dv12;
     bool isLeftSideMajor;
 };
 

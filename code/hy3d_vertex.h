@@ -82,8 +82,8 @@ struct vertex_smooth
 {
     vec3 pos;      // world position
     vec2 texCoord; // texture coordinate
-    vec3 color;
     vec3 normal;
+    vec3 color;
 
     inline vertex_smooth interpolateTo(vertex_smooth A, vertex_smooth B)
     {

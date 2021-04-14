@@ -143,11 +143,18 @@ struct vertex_shader_wave
     }
 };
 
+typedef vec3 ambient;
+typedef vec3 material;
+
+enum shade_type
+{
+    FLAT,
+    GOURAUD,
+    CELL
+};
+
 struct diffuse
 {
     vec3 intensity;
     vec3 direction;
 };
-
-typedef vec3 ambient;
-typedef vec3 material;

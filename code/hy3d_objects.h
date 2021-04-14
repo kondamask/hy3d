@@ -28,6 +28,7 @@ struct object
     vertex *vertices;
     i32 nVertices;
     bool hasNormals;
+    loaded_bitmap *texture;
     material mat;
     orientation orientation;
     vec3 pos;

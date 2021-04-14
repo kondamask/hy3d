@@ -113,7 +113,7 @@ static inline void SplitData(const std::string &in, std::vector<std::string> &ou
     }
 }
 
-static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, vec3 position, vec3 material)
+static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, loaded_bitmap *texture, vec3 position, vec3 material)
 {
     if (filename.substr(filename.size() - 4, 4) != ".obj")
         return false;
@@ -122,6 +122,8 @@ static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, v
 
     if (!file.is_open())
         return false;
+
+    object->texture = texture;
 
     std::string tag;
     std::string data;
@@ -287,13 +289,14 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
                           memory->permanentMemorySize - sizeof(engine_state));
 
     state->curObject = &state->bunny;
-
-    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
-    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
-    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
-
+    LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
-    state->background.opacity = 1.0f;
+
+    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
+    LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, 0, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
+    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
+
     state->orientation = {};
 
     state->diffuse.intensity = {1.0f, 1.0f, 1.0f};
@@ -317,6 +320,8 @@ static void Update(hy3d_engine *e, engine_state *state)
         state->curObject = &state->monkey;
     if (e->input.keyboard.isPressed[THREE])
         state->curObject = &state->gourad;
+    if (e->input.keyboard.isPressed[FOUR])
+        state->curObject = &state->bunnyTextured;
 
     // Cube Control
     f32 speed = 2.5f * dt;
@@ -361,7 +366,7 @@ static void Render(hy3d_engine *e, engine_state *state)
 {
     DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
 
-    DrawObject(state->curObject, state->diffuse, state->ambient,
+    DrawObject(state->curObject, state->diffuse, state->ambient, shade_type::GOURAUD,
                &e->pixelBuffer, &e->screenTransformer);
 }
 

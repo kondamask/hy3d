@@ -88,8 +88,8 @@ static void GouraudShading(triangle_smooth *t, diffuse d, ambient a, material m,
 {
     for (i8 i = 0; i < 3; i++)
     {
-        t->v[i].normal = t->v[i].normal * r;
-        vec3 dif = d.intensity * maxF32(0.0f, -t->v[i].normal * d.direction);
+        vec3 n = t->v[i].normal * r;
+        vec3 dif = d.intensity * maxF32(0.0f, -n * d.direction);
         t->v[i].color = Saturated(HadamardProduct(m, dif + a));
     }
 }
@@ -313,8 +313,7 @@ static void DrawTriangleTextured(pixel_buffer *pixelBuffer, triangle t, loaded_b
         DrawFlatTriangleTextured(pixelBuffer, bmp, shade, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
 
-static processed_smooth_triangle ProcessSmoothTriangle(
-    triangle_smooth *t, diffuse d, ambient a, material m, mat3 r)
+static processed_smooth_triangle ProcessSmoothTriangle(triangle_smooth *t)
 {
     processed_smooth_triangle result = {};
 
@@ -344,11 +343,10 @@ static processed_smooth_triangle ProcessSmoothTriangle(
         std::swap(t->v1, t->v2);
     }
 
-    GouraudShading(t, d, a, m, r);
+    result.split = t->v0.interpolateTo(t->v1, t->v2);
 
     // Find point where triangle is split in 2 parts: Flat Top and Flat Bottom
     // same y as v1 but on the opposite side of the triangle
-    result.split = t->v0.interpolateTo(t->v1, t->v2);
 
     // Check if hypotinus is on the left
     result.isLeftSideMajor = t->v1.pos.x > result.split.pos.x;
@@ -361,9 +359,9 @@ static processed_smooth_triangle ProcessSmoothTriangle(
     return result;
 }
 
-static void DrawTriangleGouraudShaded(pixel_buffer *pixelBuffer, diffuse d, ambient a, triangle_smooth t, material m, mat3 r)
+static void DrawTriangleGouraudShaded(pixel_buffer *pixelBuffer, triangle_smooth t)
 {
-    processed_smooth_triangle p = ProcessSmoothTriangle(&t, d, a, m, r);
+    processed_smooth_triangle p = ProcessSmoothTriangle(&t);
 
     // Top Half | Flat Bottom Triangle
     if (p.isLeftSideMajor)
@@ -396,7 +394,8 @@ static inline void TransformVertexToScreen(screen_transformer *st, vertex *v)
 static inline void TransformVertexToScreen(screen_transformer *st, vertex_smooth *v)
 {
     f32 zInv = 1.0f / v->pos.z;
-    *v *= zInv;
+    v->pos *= zInv;
+    v->texCoord *= zInv;
     v->pos.x = (v->pos.x + 1.0f) * st->xFactor;
     v->pos.y = (v->pos.y + 1.0f) * st->yFactor;
     v->pos.z = zInv;
@@ -545,10 +544,11 @@ static void DrawObjectGouraudShaded(object *o, mat3 rot, vec3 trans, diffuse d, 
         if ((normal * t.v0.pos) <= 0) // is visible
         {
 
+            GouraudShading(&t, d, a, o->mat, rot);
             TransformVertexToScreen(st, &t.v0);
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
-            DrawTriangleGouraudShaded(pb, d, a, t, o->mat, rot);
+            DrawTriangleGouraudShaded(pb, t);
         }
     }
 }

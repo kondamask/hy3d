@@ -389,10 +389,11 @@ mat3 operator*=(mat3 &a, float b)
 
 vec3 operator*(vec3 v, mat3 m)
 {
-    return {
-        v.x * m.cell[0][0] + v.y * m.cell[1][0] + v.z * m.cell[2][0],
-        v.x * m.cell[0][1] + v.y * m.cell[1][1] + v.z * m.cell[2][1],
-        v.x * m.cell[0][2] + v.y * m.cell[1][2] + v.z * m.cell[2][2]};
+    vec3 result = {};
+    result.x = v.x * m.cell[0][0] + v.y * m.cell[1][0] + v.z * m.cell[2][0];
+    result.y = v.x * m.cell[0][1] + v.y * m.cell[1][1] + v.z * m.cell[2][1];
+    result.z = v.x * m.cell[0][2] + v.y * m.cell[1][2] + v.z * m.cell[2][2];
+    return result;
 }
 
 vec3 operator*=(vec3 &v, mat3 m)

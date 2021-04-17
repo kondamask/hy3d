@@ -168,13 +168,17 @@ struct engine_state
     memory_arena memoryArena;
 
     object bunny;
-    object bunnyTextured;
     object monkey;
     object gourad;
+    object bunnyTextured;
+    object cruiser;
+    object f16;
     object *curObject;
     orientation orientation;
 
     loaded_bitmap bunnyTexture;
+    loaded_bitmap cruiserTexture;
+    loaded_bitmap f16Tex;
     loaded_bitmap background;
 
     diffuse diffuse;

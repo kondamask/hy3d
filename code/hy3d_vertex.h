@@ -88,11 +88,11 @@ struct vertex_smooth
     inline vertex_smooth interpolateTo(vertex_smooth A, vertex_smooth B)
     {
         f32 alpha = (A.pos.y - pos.y) / (B.pos.y - pos.y);
-        return {
-            lerp(pos, A.pos, B.pos, alpha),
-            lerp(texCoord, A.texCoord, B.texCoord, alpha),
-            lerp(color, A.color, B.color, alpha),
-            lerp(normal, A.normal, B.normal, alpha)};
+        vertex_smooth result = {};
+        result.pos = lerp(pos, A.pos, B.pos, alpha);
+        result.texCoord = lerp(texCoord, A.texCoord, B.texCoord, alpha);
+        result.color = lerp(color, A.color, B.color, alpha);
+        return result;
     }
 };
 
@@ -107,7 +107,11 @@ inline vertex_smooth GetSmoothVertex(vertex a)
 
 inline vertex_smooth operator+(vertex_smooth a, vertex_smooth b)
 {
-    return {a.pos + b.pos, a.texCoord + b.texCoord, a.color + b.color, a.normal + b.normal};
+    vertex_smooth result = {};
+    result.pos = a.pos + b.pos;
+    result.texCoord = a.texCoord + b.texCoord;
+    result.color = a.color + b.color;
+    return result;
 }
 
 inline vertex_smooth operator+=(vertex_smooth &a, vertex_smooth b)
@@ -118,7 +122,11 @@ inline vertex_smooth operator+=(vertex_smooth &a, vertex_smooth b)
 
 inline vertex_smooth operator-(vertex_smooth a, vertex_smooth b)
 {
-    return {a.pos - b.pos, a.texCoord - b.texCoord, a.color - b.color, a.normal - b.normal};
+    vertex_smooth result = {};
+    result.pos = a.pos - b.pos;
+    result.texCoord = a.texCoord - b.texCoord;
+    result.color = a.color - b.color;
+    return result;
 }
 
 inline vertex_smooth operator-=(vertex_smooth &a, vertex_smooth b)
@@ -129,12 +137,16 @@ inline vertex_smooth operator-=(vertex_smooth &a, vertex_smooth b)
 
 inline vertex_smooth operator-(vertex_smooth a)
 {
-    return {-a.pos, -a.texCoord, a.color, -a.normal};
+    vertex_smooth result = {};
+    result.pos = -a.pos;
+    result.texCoord = -a.texCoord;
+    result.color = -a.color;
+    return result;
 }
 
 inline vertex_smooth operator*(f32 a, vertex_smooth b)
 {
-    return {a * b.pos, a * b.texCoord, b.color, a * b.normal};
+    return {a * b.pos, a * b.texCoord, b.color, b.normal};
 }
 
 inline vertex_smooth operator*(vertex_smooth b, f32 a)
@@ -151,7 +163,11 @@ inline vertex_smooth operator*=(vertex_smooth &a, f32 b)
 inline vertex_smooth operator/(vertex_smooth a, f32 b)
 {
     b = 1.0f / b;
-    return {a.pos * b, a.texCoord * b, a.color * b, a.normal * b};
+    vertex_smooth result = {};
+    result.pos = a.pos * b;
+    result.texCoord = a.texCoord * b;
+    result.color = a.color * b;
+    return result;
 }
 
 inline vertex_smooth VertexSlopeX(vertex_smooth a, vertex_smooth b)

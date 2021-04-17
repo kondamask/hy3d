@@ -288,14 +288,18 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
                           (u8 *)memory->permanentMemory + sizeof(engine_state),
                           memory->permanentMemorySize - sizeof(engine_state));
 
-    state->curObject = &state->bunny;
+    state->curObject = &state->monkey;
     LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
+    LoadBitmap(&state->cruiserTexture, memory->DEBUGReadFile, "cruiser.bmp");
+    LoadBitmap(&state->f16Tex, memory->DEBUGReadFile, "F16s.bmp");
     LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
 
     LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
-    LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
     LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, 0, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
     LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
+    LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("cruiser.obj", &state->memoryArena, &state->cruiser, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("f16.obj", &state->memoryArena, &state->f16, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
 
     state->orientation = {};
 
@@ -322,6 +326,10 @@ static void Update(hy3d_engine *e, engine_state *state)
         state->curObject = &state->gourad;
     if (e->input.keyboard.isPressed[FOUR])
         state->curObject = &state->bunnyTextured;
+    if (e->input.keyboard.isPressed[FIVE])
+        state->curObject = &state->cruiser;
+    if (e->input.keyboard.isPressed[SIX])
+        state->curObject = &state->f16;
 
     // Cube Control
     f32 speed = 2.5f * dt;

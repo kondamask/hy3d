@@ -313,6 +313,24 @@ static KEYBOARD_BUTTON Win32TranslateKeyInput(VK_CODE code)
 	case 0x56:
 		return V;
 		break;
+	case 0x49:
+		return I;
+		break;
+	case 0x4A:
+		return J;
+		break;
+	case 0x4B:
+		return K;
+		break;
+	case 0x4C:
+		return L;
+		break;
+	case 0x55:
+		return U;
+		break;
+	case 0x4F:
+		return O;
+		break;
 	case VK_SHIFT:
 		return SHIFT;
 		break;

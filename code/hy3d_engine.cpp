@@ -271,6 +271,92 @@ static bool LoadOBJ(std::string filename, memory_arena *arena, object *object, l
     return true;
 }
 
+#define PI 3.141592741f
+static inline i32 calcIdx(i32 longDiv, i32 iLat, i32 iLong)
+{
+    return iLat * longDiv + iLong;
+}
+
+static void LoadSphere(f32 radius, i32 latDiv, i32 longDiv,
+                       memory_arena *arena, object *object, vec3 position, vec3 material)
+{
+    object->mat = material;
+    vec3 base = {0.0f, 0.0f, radius};
+    f32 latAngle = PI / latDiv;
+    f32 longAngle = PI / longDiv;
+
+    std::vector<vec3> vertices;
+    for (int iLat = 1; iLat < latDiv; iLat++)
+    {
+        vec3 latBase = base * RotateX(latAngle * iLat);
+        for (int iLong = 0; iLong < longDiv; iLong++)
+        {
+            vertices.emplace_back();
+            vertices.back() = latBase * RotateZ(longAngle * iLong);
+        }
+    }
+
+    // add the cap vertices
+    i32 iNorthPole = (i32)vertices.size();
+    vertices.emplace_back();
+    vertices.back() = base;
+    i32 iSouthPole = (i32)vertices.size();
+    vertices.emplace_back();
+    vertices.back() = -base;
+
+    std::vector<i32> indices;
+    for (int iLat = 0; iLat < latDiv - 2; iLat++)
+    {
+        for (int iLong = 0; iLong < longDiv - 1; iLong++)
+        {
+            indices.push_back(calcIdx(longDiv, iLat, iLong));
+            indices.push_back(calcIdx(longDiv, iLat + 1, iLong));
+            indices.push_back(calcIdx(longDiv, iLat, iLong + 1));
+            indices.push_back(calcIdx(longDiv, iLat, iLong + 1));
+            indices.push_back(calcIdx(longDiv, iLat + 1, iLong));
+            indices.push_back(calcIdx(longDiv, iLat + 1, iLong + 1));
+        }
+        // wrap band
+        indices.push_back(calcIdx(longDiv, iLat, longDiv - 1));
+        indices.push_back(calcIdx(longDiv, iLat + 1, longDiv - 1));
+        indices.push_back(calcIdx(longDiv, iLat, 0));
+        indices.push_back(calcIdx(longDiv, iLat, 0));
+        indices.push_back(calcIdx(longDiv, iLat + 1, longDiv - 1));
+        indices.push_back(calcIdx(longDiv, iLat + 1, 0));
+    }
+
+    // cap fans
+    for (int iLong = 0; iLong < longDiv - 1; iLong++)
+    {
+        // north
+        indices.push_back(iNorthPole);
+        indices.push_back(calcIdx(longDiv, 0, iLong));
+        indices.push_back(calcIdx(longDiv, 0, iLong + 1));
+        // south
+        indices.push_back(calcIdx(longDiv, latDiv - 2, iLong + 1));
+        indices.push_back(calcIdx(longDiv, latDiv - 2, iLong));
+        indices.push_back(iSouthPole);
+    }
+    // wrap triangles
+    // north
+    indices.push_back(iNorthPole);
+    indices.push_back(calcIdx(longDiv, 0, longDiv - 1));
+    indices.push_back(calcIdx(longDiv, 0, 0));
+    // south
+    indices.push_back(calcIdx(longDiv, latDiv - 2, 0));
+    indices.push_back(calcIdx(longDiv, latDiv - 2, longDiv - 1));
+    indices.push_back(iSouthPole);
+
+    i32 totalVertices = (i32)indices.size();
+    object->hasNormals = true;
+    object->vertices = ReserveArrayMemory(arena, totalVertices, vertex);
+    object->nVertices = totalVertices;
+    for (i32 i = 0; i < totalVertices; i++)
+    {
+        object->vertices[i].pos = vertices[indices[i]];
+    }
+}
+
 static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memory)
 {
     e->input = {};
@@ -289,23 +375,24 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
                           memory->permanentMemorySize - sizeof(engine_state));
 
     state->curObject = &state->monkey;
-    LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
-    LoadBitmap(&state->cruiserTexture, memory->DEBUGReadFile, "cruiser.bmp");
-    LoadBitmap(&state->f16Tex, memory->DEBUGReadFile, "F16s.bmp");
-    LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
-
-    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
+    //LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
+    //LoadBitmap(&state->cruiserTexture, memory->DEBUGReadFile, "cruiser.bmp");
+    //LoadBitmap(&state->f16Tex, memory->DEBUGReadFile, "F16s.bmp");
+    //LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
+    //
+    //LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
     LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, 0, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
-    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
-    LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
-    LoadOBJ("cruiser.obj", &state->memoryArena, &state->cruiser, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
-    LoadOBJ("f16.obj", &state->memoryArena, &state->f16, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    //LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
+    //LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    //LoadOBJ("cruiser.obj", &state->memoryArena, &state->cruiser, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    //LoadOBJ("f16.obj", &state->memoryArena, &state->f16, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
 
     state->orientation = {};
 
     state->diffuse.intensity = {1.0f, 1.0f, 1.0f};
     state->diffuse.direction = {0.0f, 0.0f, 1.0f};
     state->ambient = {0.2f, 0.15f, 0.25f};
+    state->pointLight = {{0.0f, 0.0f, 2.0f}, 1.0f, 2.619f, 0.382f};
 
     memory->isInitialized = true;
     e->frameStart = std::chrono::steady_clock::now();
@@ -372,10 +459,11 @@ static void Update(hy3d_engine *e, engine_state *state)
 
 static void Render(hy3d_engine *e, engine_state *state)
 {
-    DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
+    //DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
 
-    DrawObject(state->curObject, state->diffuse, state->ambient, shade_type::GOURAUD,
+    DrawObject(state->curObject, state->diffuse, state->ambient, state->pointLight, shade_type::GOURAUD,
                &e->pixelBuffer, &e->screenTransformer);
+    //DrawObject(&state->sphere, {}, {}, {}, shade_type::SOLID, &e->pixelBuffer, &e->screenTransformer);
 }
 
 extern "C" UPDATE_AND_RENDER(UpdateAndRender)

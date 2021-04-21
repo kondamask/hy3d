@@ -16,6 +16,11 @@ inline f32 maxF32(f32 a, f32 b)
     return b;
 }
 
+inline f32 Squared(f32 n)
+{
+    return n * n;
+}
+
 struct vec3
 {
     union
@@ -54,7 +59,7 @@ struct vec3
         return sqrtf(lengthSq());
     }
 
-    inline vec3 normal()
+    inline vec3 normalized()
     {
         f32 l = length();
         if (l == 0.0f)
@@ -64,7 +69,7 @@ struct vec3
 
     inline void normalize()
     {
-        *this = this->normal();
+        *this = this->normalized();
     }
 };
 

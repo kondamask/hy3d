@@ -93,7 +93,17 @@ static void GouraudShading(triangle_smooth *t, diffuse d, ambient a, material m,
         t->v[i].color = Saturated(HadamardProduct(m, dif + a));
     }
 }
-
+/*
+static vec3 PhongShading(vertex_smooth v, lighting l, material m)
+{
+    vec3 vToL = l.p.pos - v.color;
+    f32 dist = vToL.length();
+    vec3 dir = vToL / dist;
+    f32 attenuation = 1.0f / (l.p.constantAttenuation + l.p.linearAttenuation * dist + l.p.quadradicAttenuation * Squared(dist));
+    vec3 dif = l.d.intensity * attenuation * maxF32(0.0f, v.normal.normalized() * l.d.direction);
+    return Saturated(HadamardProduct(m, dif + l.a));
+}
+*/
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // NOTE:  FLAT Triangle Rendering
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -104,7 +114,8 @@ static inline vertex Prestep(i32 rounded, f32 original, vertex step)
 
 static inline vertex_smooth Prestep(i32 rounded, f32 original, vertex_smooth step)
 {
-    return (step * (original - (f32)rounded + 0.5f));
+    vertex_smooth result = step * (original - (f32)rounded + 0.5f);
+    return result;
 }
 
 static inline color GetShadedColor(color c, vec3 shade)
@@ -240,7 +251,46 @@ static void DrawFlatTriangleSmooth(
         right -= dvRight;
     }
 }
+/*
+static void DrawFlatTrianglePhong(
+    pixel_buffer *pixelBuffer, lighting l, material m,
+    vertex_smooth leftStart, vertex_smooth rightStart,
+    vertex_smooth dvLeft, vertex_smooth dvRight,
+    f32 yTopF32, f32 yBottomF32)
+{
+    i16 xLeft;
+    i16 xRight;
+    i16 yTop = RoundF32toI16(yTopF32);
+    i16 yBottom = RoundF32toI16(yBottomF32);
+    vertex_smooth left = leftStart + Prestep(yTop, yTopF32, -dvLeft);
+    vertex_smooth right = rightStart + Prestep(yTop, yTopF32, -dvRight);
+    vertex_smooth leftToRightStep;
+    vertex_smooth inTriangleCoord;
+    f32 worldZ;
+    color c;
 
+    for (i16 y = yTop; y > yBottom; y--)
+    {
+        xLeft = RoundF32toI16(left.pos.x);
+        xRight = RoundF32toI16(right.pos.x);
+        leftToRightStep = VertexSlopeX(left, right);
+        inTriangleCoord = left + Prestep(xLeft, left.pos.x, leftToRightStep);
+
+        for (i16 x = xLeft; x < xRight; x++, inTriangleCoord -= leftToRightStep)
+        {
+            worldZ = 1.0f / inTriangleCoord.pos.z;
+            if (UpdateZBuffer(pixelBuffer, x, y, worldZ))
+            {
+                vertex_smooth attr = inTriangleCoord * worldZ;
+                c = Vec3ToRGB(PhongShading(attr, l, m));
+                PutPixel(pixelBuffer, x, y, c);
+            }
+        }
+        left -= dvLeft;
+        right -= dvRight;
+    }
+}
+*/
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // NOTE:  GENERIC Triangle Rendering
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -279,7 +329,7 @@ static processed_triangle ProcessTriangle(triangle *t)
     return result;
 }
 
-static void DrawTriangleFlatShaded(pixel_buffer *pixelBuffer, triangle t, color c)
+static void DrawTriangleSolid(pixel_buffer *pixelBuffer, triangle t, color c)
 {
     processed_triangle p = ProcessTriangle(&t);
 
@@ -375,7 +425,24 @@ static void DrawTriangleGouraudShaded(pixel_buffer *pixelBuffer, triangle_smooth
     else
         DrawFlatTriangleSmooth(pixelBuffer, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
 }
+/*
+static void DrawTrianglePhongShaded(pixel_buffer *pixelBuffer, triangle_smooth t, lighting l, material m)
+{
+    processed_smooth_triangle p = ProcessSmoothTriangle(&t);
 
+    // Top Half | Flat Bottom Triangle
+    if (p.isLeftSideMajor)
+        DrawFlatTrianglePhong(pixelBuffer, l, m, t.v0, t.v0, p.dv02, p.dv01, t.v0.pos.y, t.v1.pos.y);
+    else
+        DrawFlatTrianglePhong(pixelBuffer, l, m, t.v0, t.v0, p.dv01, p.dv02, t.v0.pos.y, t.v1.pos.y);
+
+    //Bottom Half | Flat Top
+    if (p.isLeftSideMajor)
+        DrawFlatTrianglePhong(pixelBuffer, l, m, p.split, t.v1, p.dv02, p.dv12, t.v1.pos.y, t.v2.pos.y);
+    else
+        DrawFlatTrianglePhong(pixelBuffer, l, m, t.v1, p.split, p.dv12, p.dv02, t.v1.pos.y, t.v2.pos.y);
+}
+*/
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // NOTE:  Generic Mesh & Bitmap Rendering
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -467,6 +534,35 @@ static void DrawObjectTextured(
     FreeMeshCopy();
 }
 
+static void DrawObjectSolid(object *o, mat3 rot, vec3 trans,
+                            pixel_buffer *pb, screen_transformer *st)
+{
+    triangle t;
+    vec3 normal;
+    color c;
+    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
+    {
+        t.v[0] = o->vertices[i];
+        t.v[1] = o->vertices[i + 1];
+        t.v[2] = o->vertices[i + 2];
+
+        t.v0.pos = t.v0.pos * rot + trans;
+        t.v1.pos = t.v1.pos * rot + trans;
+        t.v2.pos = t.v2.pos * rot + trans;
+
+        normal = CrossProduct(t.v2.pos - t.v0.pos, t.v1.pos - t.v0.pos);
+        if ((normal * t.v0.pos) <= 0) // is visible
+        {
+
+            TransformVertexToScreen(st, &t.v0);
+            TransformVertexToScreen(st, &t.v1);
+            TransformVertexToScreen(st, &t.v2);
+            c = Vec3ToRGB(o->mat);
+            DrawTriangleSolid(pb, t, c);
+        }
+    }
+}
+
 static void DrawObjectFlatShaded(object *o, mat3 rot, vec3 trans, diffuse d, ambient a,
                                  pixel_buffer *pb, screen_transformer *st)
 {
@@ -491,7 +587,7 @@ static void DrawObjectFlatShaded(object *o, mat3 rot, vec3 trans, diffuse d, amb
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
             c = Vec3ToRGB(FlatShading(d, a, normal, o->mat));
-            DrawTriangleFlatShaded(pb, t, c);
+            DrawTriangleSolid(pb, t, c);
         }
     }
 }
@@ -525,34 +621,6 @@ static void DrawObjectTexturedFlatShaded(object *o, mat3 rot, vec3 trans, diffus
     }
 }
 
-static void DrawObjectGouraudShaded(object *o, mat3 rot, vec3 trans, diffuse d, ambient a,
-                                    pixel_buffer *pb, screen_transformer *st)
-{
-    triangle_smooth t;
-    vec3 normal;
-    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
-    {
-        t.v[0] = GetSmoothVertex(o->vertices[i]);
-        t.v[1] = GetSmoothVertex(o->vertices[i + 1]);
-        t.v[2] = GetSmoothVertex(o->vertices[i + 2]);
-
-        t.v0.pos = t.v0.pos * rot + trans;
-        t.v1.pos = t.v1.pos * rot + trans;
-        t.v2.pos = t.v2.pos * rot + trans;
-
-        normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
-        if ((normal * t.v0.pos) <= 0) // is visible
-        {
-
-            GouraudShading(&t, d, a, o->mat, rot);
-            TransformVertexToScreen(st, &t.v0);
-            TransformVertexToScreen(st, &t.v1);
-            TransformVertexToScreen(st, &t.v2);
-            DrawTriangleGouraudShaded(pb, t);
-        }
-    }
-}
-
 static void DrawObjectCellShaded(object *o, mat3 rot, vec3 trans, diffuse d, ambient a, f32 th, f32 sf,
                                  pixel_buffer *pb, screen_transformer *st)
 {
@@ -576,12 +644,68 @@ static void DrawObjectCellShaded(object *o, mat3 rot, vec3 trans, diffuse d, amb
             TransformVertexToScreen(st, &t.v1);
             TransformVertexToScreen(st, &t.v2);
             c = Vec3ToRGB(CellShading(d, a, normal, o->mat, th, sf));
-            DrawTriangleFlatShaded(pb, t, c);
+            DrawTriangleSolid(pb, t, c);
         }
     }
 }
 
-static void DrawObject(object *o, diffuse d, ambient a, shade_type shade,
+static void TransformAndAssemble(vertex v0, vertex v1, vertex v2, mat3 rot, vec3 tran, triangle_smooth *tOut)
+{
+    v0.pos = v0.pos * rot + tran;
+    v1.pos = v1.pos * rot + tran;
+    v2.pos = v2.pos * rot + tran;
+
+    tOut->v0.pos = v0.pos;
+    tOut->v0.normal = v0.normal;
+    tOut->v0.texCoord = v0.texCoord;
+
+    tOut->v1.pos = v1.pos;
+    tOut->v1.normal = v1.normal;
+    tOut->v1.texCoord = v1.texCoord;
+
+    tOut->v2.pos = v2.pos;
+    tOut->v2.normal = v2.normal;
+    tOut->v2.texCoord = v2.texCoord;
+}
+
+static void DrawObjectGouraudShaded(object *o, mat3 rot, vec3 trans, diffuse d, ambient a,
+                                    pixel_buffer *pb, screen_transformer *st)
+{
+    triangle_smooth t = {};
+    vec3 normal;
+    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
+    {
+        TransformAndAssemble(o->vertices[i], o->vertices[i + 1], o->vertices[i + 2], rot, trans, &t);
+        normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
+        if ((normal * t.v0.pos) <= 0) // is visible
+        {
+            for (i8 vi = 0; vi < 3; vi++)
+                TransformVertexToScreen(st, &t.v[vi]);
+            GouraudShading(&t, d, a, o->mat, rot);
+            DrawTriangleGouraudShaded(pb, t);
+        }
+    }
+}
+/*
+static void DrawObjectPhongShaded(object *o, mat3 rot, vec3 trans, diffuse d, ambient a, point_light p,
+                                  pixel_buffer *pb, screen_transformer *st)
+{
+    triangle_smooth t = {};
+    vec3 normal;
+    for (i32 i = 0; i + 2 < o->nVertices; i += 3)
+    {
+        TransformAndAssemble(o->vertices[i], o->vertices[i + 1], o->vertices[i + 2], rot, trans, &t);
+        normal = CrossProduct(t.v1.pos - t.v0.pos, t.v2.pos - t.v0.pos);
+        if ((normal * t.v0.pos) <= 0) // is visible
+        {
+            for (i8 vi = 0; vi < 3; vi++)
+                TransformVertexToScreen(st, &t.v[vi]);
+            DrawTrianglePhongShaded(pb, t, {d, a, p}, o->mat);
+        }
+    }
+}
+*/
+static void DrawObject(object *o, diffuse d, ambient a, point_light l, shade_type shade,
                        pixel_buffer *pb, screen_transformer *st)
 {
     mat3 rotation = RotateX(o->orientation.thetaX) *
@@ -600,12 +724,16 @@ static void DrawObject(object *o, diffuse d, ambient a, shade_type shade,
     }
     else
     {
-        if (shade == shade_type::GOURAUD && o->hasNormals)
+        if (shade == shade_type::SOLID)
+            DrawObjectSolid(o, rotation, translation, pb, st);
+        else if (shade == shade_type::GOURAUD && o->hasNormals)
             DrawObjectGouraudShaded(o, rotation, translation, d, a, pb, st);
         else if (shade == shade_type::FLAT || (shade == shade_type::GOURAUD && !o->hasNormals))
             DrawObjectFlatShaded(o, rotation, translation, d, a, pb, st);
         else if (shade == shade_type::CELL)
             DrawObjectCellShaded(o, rotation, translation, d, a, 0.6f, 0.7f, pb, st);
+        //else if (shade == shade_type::PHONG && o->hasNormals)
+        //    DrawObjectPhongShaded(o, rotation, translation, d, a, l, pb, st);
     }
 }
 

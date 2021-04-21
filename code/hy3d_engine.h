@@ -89,6 +89,12 @@ enum KEYBOARD_BUTTON
     X,
     C,
     V,
+    I,
+    J,
+    K,
+    L,
+    U,
+    O,
     SHIFT,
     CTRL,
     ALT,
@@ -173,16 +179,17 @@ struct engine_state
     object bunnyTextured;
     object cruiser;
     object f16;
-    object *curObject;
-    orientation orientation;
-
     loaded_bitmap bunnyTexture;
     loaded_bitmap cruiserTexture;
     loaded_bitmap f16Tex;
     loaded_bitmap background;
 
+    object *curObject;
+    orientation orientation;
+
     diffuse diffuse;
     ambient ambient;
+    point_light pointLight;
 };
 
 struct hy3d_engine

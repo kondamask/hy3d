@@ -148,13 +148,30 @@ typedef vec3 material;
 
 enum shade_type
 {
+    SOLID,
     FLAT,
     GOURAUD,
-    CELL
+    CELL,
+    PHONG
 };
 
 struct diffuse
 {
     vec3 intensity;
     vec3 direction;
+};
+
+struct point_light
+{
+    vec3 pos;
+    float linearAttenuation;
+    float quadradicAttenuation;
+    float constantAttenuation;
+};
+
+struct lighting
+{
+    diffuse d;
+    ambient a;
+    point_light p;
 };

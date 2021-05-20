@@ -398,41 +398,47 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
     e->frameStart = std::chrono::steady_clock::now();
 }
 
-static void Update(hy3d_engine *e, engine_state *state)
+extern "C" UPDATE_AND_RENDER(UpdateAndRender)
 {
-    std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
-    std::chrono::duration<f32> frameTime = frameEnd - e->frameStart;
-    f32 dt = frameTime.count();
-    e->frameStart = frameEnd;
+    engine_state *state = (engine_state *)memory->permanentMemory;
+    if (!memory->isInitialized)
+        Initialize(&e, state, memory);
+    ClearZBuffer(&e.pixelBuffer);
 
-    if (e->input.keyboard.isPressed[ONE])
+    // NOTE: UPDATE
+    std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
+    std::chrono::duration<f32> frameTime = frameEnd - e.frameStart;
+    f32 dt = frameTime.count();
+    e.frameStart = frameEnd;
+
+    if (e.input.keyboard.isPressed[ONE])
         state->curObject = &state->bunny;
-    if (e->input.keyboard.isPressed[TWO])
+    if (e.input.keyboard.isPressed[TWO])
         state->curObject = &state->monkey;
-    if (e->input.keyboard.isPressed[THREE])
+    if (e.input.keyboard.isPressed[THREE])
         state->curObject = &state->gourad;
-    if (e->input.keyboard.isPressed[FOUR])
+    if (e.input.keyboard.isPressed[FOUR])
         state->curObject = &state->bunnyTextured;
-    if (e->input.keyboard.isPressed[FIVE])
+    if (e.input.keyboard.isPressed[FIVE])
         state->curObject = &state->cruiser;
-    if (e->input.keyboard.isPressed[SIX])
+    if (e.input.keyboard.isPressed[SIX])
         state->curObject = &state->f16;
 
     // Cube Control
     f32 speed = 2.5f * dt;
-    if (e->input.keyboard.isPressed[UP])
+    if (e.input.keyboard.isPressed[UP])
         state->curObject->orientation.thetaX += speed;
-    if (e->input.keyboard.isPressed[DOWN])
+    if (e.input.keyboard.isPressed[DOWN])
         state->curObject->orientation.thetaX -= speed;
-    if (e->input.keyboard.isPressed[LEFT])
+    if (e.input.keyboard.isPressed[LEFT])
         state->curObject->orientation.thetaY += speed;
-    if (e->input.keyboard.isPressed[RIGHT])
+    if (e.input.keyboard.isPressed[RIGHT])
         state->curObject->orientation.thetaY -= speed;
-    if (e->input.keyboard.isPressed[Q])
+    if (e.input.keyboard.isPressed[Q])
         state->curObject->orientation.thetaZ += speed;
-    if (e->input.keyboard.isPressed[W])
+    if (e.input.keyboard.isPressed[W])
         state->curObject->orientation.thetaZ -= speed;
-    if (e->input.keyboard.isPressed[R])
+    if (e.input.keyboard.isPressed[R])
     {
         state->curObject->orientation.thetaX = 0.0f;
         state->curObject->orientation.thetaY = 0.0f;
@@ -440,40 +446,29 @@ static void Update(hy3d_engine *e, engine_state *state)
     }
 
     f32 offsetZ = 1.0f * dt;
-    if (e->input.keyboard.isPressed[Z])
+    if (e.input.keyboard.isPressed[Z])
         state->curObject->pos.z -= offsetZ;
-    if (e->input.keyboard.isPressed[X])
+    if (e.input.keyboard.isPressed[X])
         state->curObject->pos.z += offsetZ;
 
-    if (e->input.keyboard.isPressed[C])
+    if (e.input.keyboard.isPressed[C])
         state->diffuse.direction.x -= speed;
-    if (e->input.keyboard.isPressed[V])
+    if (e.input.keyboard.isPressed[V])
         state->diffuse.direction.x += speed;
-    if (e->input.keyboard.isPressed[SHIFT])
+    if (e.input.keyboard.isPressed[SHIFT])
     {
         state->diffuse.direction.x = 0;
         state->diffuse.direction.y = 0;
         state->diffuse.direction.z *= -1.0f;
     }
-}
 
-static void Render(hy3d_engine *e, engine_state *state)
-{
-    //DrawBitmap(&state->background, 0, 0, &e->pixelBuffer);
-
-    DrawObject(state->curObject, state->diffuse, state->ambient, state->pointLight, shade_type::GOURAUD,
-               &e->pixelBuffer, &e->screenTransformer);
-    //DrawObject(&state->sphere, {}, {}, {}, shade_type::SOLID, &e->pixelBuffer, &e->screenTransformer);
-}
-
-extern "C" UPDATE_AND_RENDER(UpdateAndRender)
-{
-    engine_state *state = (engine_state *)memory->permanentMemory;
-
-    if (!memory->isInitialized)
-        Initialize(&e, state, memory);
-
-    ClearZBuffer(&e.pixelBuffer);
-    Update(&e, state);
-    Render(&e, state);
+    // NOTE: RENDER
+    //DrawBitmap(&state->background, 0, 0, &e.pixelBuffer);
+    if (state->curObject->pos.z >= 15.0f)
+        DrawObject(state->curObject, state->diffuse, state->ambient, state->pointLight, shade_type::FLAT,
+                   &e.pixelBuffer, &e.screenTransformer);
+    else
+        DrawObject(state->curObject, state->diffuse, state->ambient, state->pointLight, shade_type::GOURAUD,
+                   &e.pixelBuffer, &e.screenTransformer);
+    //DrawObject(&state->sphere, {}, {}, {}, shade_type::SOLID, &e.pixelBuffer, &e.screenTransformer);
 }

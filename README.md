@@ -9,6 +9,6 @@ Compile with msvc:\
     4. working directory is \data\
 \
 Previews:\
-![Alt Text](previews/10_170421.gif "Preview gif")
-![Alt Text](previews/9_100421.gif "Preview gif")
-![Alt Text](previews/8_150321.gif "Preview gif")
+![Alt Text](previews/10_170421.gif "Preview gif")\
+![Alt Text](previews/9_100421.gif "Preview gif")\
+![Alt Text](previews/8_150321.gif "Preview gif")\

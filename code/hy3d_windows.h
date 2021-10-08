@@ -8,10 +8,10 @@
 // (or all) of these defines (it will increase build time though).
 #ifndef FULL_WINTARD
 #define WIN32_LEAN_AND_MEAN
-#define NOGDICAPMASKS
+/*#define NOGDICAPMASKS
 #define NOSYSMETRICS
 #define NOMENUS
-#define NOICONS
+//#define NOICONS
 #define NOSYSCOMMANDS
 #define OEMRESOURCE
 #define NOATOM
@@ -38,7 +38,7 @@
 #define NORPC
 #define NOPROXYSTUB
 #define NOIMAGE
-#define NOTAPE
+#define NOTAPE*/
 #endif
 
 #define NOMINMAX

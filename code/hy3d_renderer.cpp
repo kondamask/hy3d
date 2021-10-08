@@ -60,7 +60,7 @@ static bool UpdateZBuffer(pixel_buffer *pixelBuffer, i32 x, i32 y, f32 value)
 static inline void VertexShaderWave(vertex *v, void *properties)
 {
     vertex_shader_wave *wave = (vertex_shader_wave *)properties;
-    v->pos.y += wave->amplitude * std::sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq);
+    v->pos.y += f32(wave->amplitude * sin(wave->time * wave->scrollFreq + v->pos.x * wave->waveFreq));
 }
 
 static vec3 FlatShading(diffuse d, ambient a, vec3 n, material m)

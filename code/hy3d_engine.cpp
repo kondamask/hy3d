@@ -375,17 +375,17 @@ static void Initialize(hy3d_engine *e, engine_state *state, engine_memory *memor
                           memory->permanentMemorySize - sizeof(engine_state));
 
     state->curObject = &state->monkey;
-    //LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
-    //LoadBitmap(&state->cruiserTexture, memory->DEBUGReadFile, "cruiser.bmp");
-    //LoadBitmap(&state->f16Tex, memory->DEBUGReadFile, "F16s.bmp");
-    //LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
-    //
-    //LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
+    LoadBitmap(&state->bunnyTexture, memory->DEBUGReadFile, "bunny_tex.bmp");
+    LoadBitmap(&state->cruiserTexture, memory->DEBUGReadFile, "cruiser.bmp");
+    LoadBitmap(&state->f16Tex, memory->DEBUGReadFile, "F16s.bmp");
+    LoadBitmap(&state->background, memory->DEBUGReadFile, "city_bg_purple.bmp");
+    
+    LoadOBJ("bunny.obj", &state->memoryArena, &state->bunny, 0, {0.0f, -0.1f, 1.0f}, {0.9f, 0.85f, 0.9f});
     LoadOBJ("suzanne.obj", &state->memoryArena, &state->monkey, 0, {0.0f, 0.0f, 5.0f}, {0.9f, 0.75f, 0.45f});
-    //LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
-    //LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
-    //LoadOBJ("cruiser.obj", &state->memoryArena, &state->cruiser, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
-    //LoadOBJ("f16.obj", &state->memoryArena, &state->f16, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("gourad.obj", &state->memoryArena, &state->gourad, 0, {0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 1.0f});
+    LoadOBJ("bunny_tex.obj", &state->memoryArena, &state->bunnyTextured, &state->bunnyTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("cruiser.obj", &state->memoryArena, &state->cruiser, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
+    LoadOBJ("f16.obj", &state->memoryArena, &state->f16, &state->cruiserTexture, {0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 1.0f});
 
     state->orientation = {};
 

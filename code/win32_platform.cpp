@@ -190,8 +190,7 @@ static inline void Win32InitializeWindow(win32_window &window, i16 width, i16 he
 	windowClass.lpszClassName = window.className;
 	windowClass.hInstance = window.instance;
 
-	// TODO: FIX THE FUCKING ICON.
-	windowClass.hIcon = LoadIconA(window.instance, MAKEINTRESOURCEA(IDI_ICON1));
+	windowClass.hIcon = LoadIcon(window.instance, MAKEINTRESOURCE(101));
 
 	if (!RegisterClassA(&windowClass))
 	{
@@ -425,7 +424,7 @@ static bool Win32ProcessMessages(win32_window &window, engine_input &input, i32 
 		case WM_MOUSEMOVE:
 		{
 			POINTS p = MAKEPOINTS(message.lParam);
-			p.y = window.pixelBuffer.height - p.y;
+			p.y = window.dimensions.height - p.y;
 			bool isInWindow =
 				p.x >= 0 && p.x < window.dimensions.width &&
 				p.y >= 0 && p.y < window.dimensions.height;

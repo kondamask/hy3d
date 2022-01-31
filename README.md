@@ -1,4 +1,4 @@
-![HY3D LOGO|256x256,100%](data/hy3d.ico)
+![HY3D LOGO|256x256,100%](hy3d.ico)
 
 A simple software 3D renderer for learning purposes, following mostly Chili's "3D Fundamentals" series and Casey Muratori's "Handmade Hero".\
 \
